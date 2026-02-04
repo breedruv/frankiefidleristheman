@@ -1,6 +1,4 @@
 node_modules/
 .next/
 .vercel/
-.env*
-npm-debug.log*
-yarn-error.log*
+public/whatta-man.mp3
