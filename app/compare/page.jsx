@@ -1,5 +1,7 @@
 import { getPlayerOptions, getPlayerSummaries } from "../../lib/queries";
 
+export const dynamic = "force-dynamic";
+
 const formatNumber = (value, digits = 1) => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return "--";
