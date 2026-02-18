@@ -4,6 +4,8 @@
 node_modules/
 .vercel/
 dist/
+__pycache__/
+*.pyc
 2026_cbb_available_games.csv
 2026_cbb_plays.csv
 player stats.csv
