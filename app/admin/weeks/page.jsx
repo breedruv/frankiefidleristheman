@@ -2,6 +2,8 @@ import { revalidatePath } from "next/cache";
 import { getFantasyMatchups, getFantasyTeams, getFantasyWeekOptions } from "../../../lib/queries";
 import { supabase, hasSupabase } from "../../../lib/supabase";
 
+export const dynamic = "force-dynamic";
+
 const currentSeason = () => new Date().getFullYear();
 const DEFAULT_ROW_COUNT = 8;
 
