@@ -4,6 +4,8 @@ import { Bebas_Neue, Archivo } from "next/font/google";
 import PositionRosterNav from "./components/PositionRosterNav";
 import { getFantasyRoster } from "../lib/queries";
 
+export const dynamic = "force-dynamic";
+
 const display = Bebas_Neue({
   subsets: ["latin"],
   weight: "400",
