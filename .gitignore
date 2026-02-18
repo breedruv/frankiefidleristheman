@@ -1,4 +1,10 @@
-node_modules/
+.env.local
+.env.*
 .next/
+node_modules/
 .vercel/
-public/whatta-man.mp3
+dist/
+2026_cbb_available_games.csv
+2026_cbb_plays.csv
+player stats.csv
+roster.csv

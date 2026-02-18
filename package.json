@@ -1,20 +1,32 @@
 {
-  "name": "btown-spartians",
-  "version": "0.1.0",
+  "name": "frankiefidleristheman",
   "private": true,
   "scripts": {
-  "dev": "next dev",
-  "build": "next build",
-  "start": "next start",
-  "lint": "next lint"
- },
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "sync:roster": "python python/espn_ingest.py roster --use-supabase",
+    "sync:schedule": "python python/espn_ingest.py schedule --use-supabase",
+    "sync:stats": "python python/espn_ingest.py stats --use-supabase",
+    "sync:all": "python python/espn_ingest.py all --use-supabase",
+    "seed:fantasy": "python python/espn_ingest.py seed-fantasy --use-supabase",
+    "sync:roster:supabase": "python python/espn_ingest.py roster --use-supabase",
+    "sync:schedule:supabase": "python python/espn_ingest.py schedule --use-supabase",
+    "sync:schedule:all": "python python/espn_ingest.py schedule --include-nonfinal --use-supabase",
+    "sync:stats:supabase": "python python/espn_ingest.py stats --use-supabase",
+    "sync:roster:postgres": "python python/espn_ingest.py roster",
+    "sync:schedule:postgres": "python python/espn_ingest.py schedule",
+    "sync:stats:postgres": "python python/espn_ingest.py stats",
+    "sync:all:postgres": "python python/espn_ingest.py all"
+  },
   "dependencies": {
-  "next": "latest",
-  "react": "latest",
-  "react-dom": "latest"
- },
-  "devDependencies": {
-  "eslint": "latest",
-  "eslint-config-next": "latest"
- }
+    "@supabase/supabase-js": "^2.95.3",
+    "csv-parse": "5.5.6",
+    "dotenv": "16.4.5",
+    "next": "^16.1.6",
+    "pg": "8.12.0",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  }
 }
