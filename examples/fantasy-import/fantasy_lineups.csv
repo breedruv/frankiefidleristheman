@@ -1,0 +1,3 @@
+season,season_type,week,fantasy_team_id,center_id,center_game_id,forward1_id,forward1_game_id,forward2_id,forward2_game_id,guard1_id,guard1_game_id,guard2_id,guard2_game_id,t1_id,t1_game_id,t2_id,t2_game_id
+2026,preseason,1,1,1234567,,1234568,,1234569,,1234570,,1234571,,1234572,,1234573,
+2026,regular,1,1,2234567,,2234568,,2234569,,2234570,,2234571,,2234572,,2234573,

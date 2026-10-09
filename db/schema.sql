@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS players (
 
 CREATE TABLE IF NOT EXISTS team_rosters (
   team_id INTEGER NOT NULL REFERENCES teams(team_id),
-  player_id INTEGER NOT NULL REFERENCES players(player_id),
+  player_id INTEGER NOT NULL,
   season INTEGER NOT NULL,
   is_active BOOLEAN,
   PRIMARY KEY (team_id, player_id, season)
@@ -113,36 +113,61 @@ CREATE TABLE IF NOT EXISTS fantasy_roster_moves (
 
 CREATE TABLE IF NOT EXISTS fantasy_matchups (
   season INTEGER NOT NULL,
+  season_type TEXT NOT NULL DEFAULT 'regular',
   week INTEGER NOT NULL,
   fantasy_team_id INTEGER NOT NULL REFERENCES fantasy_teams(fantasy_team_id),
   opponent_fantasy_team_id INTEGER NOT NULL REFERENCES fantasy_teams(fantasy_team_id),
-  PRIMARY KEY (season, week, fantasy_team_id)
+  PRIMARY KEY (season, season_type, week, fantasy_team_id)
 );
 
 CREATE TABLE IF NOT EXISTS fantasy_lineups (
   season INTEGER NOT NULL,
+  season_type TEXT NOT NULL DEFAULT 'regular',
   week INTEGER NOT NULL,
   fantasy_team_id INTEGER NOT NULL REFERENCES fantasy_teams(fantasy_team_id),
   center_id INTEGER REFERENCES players(player_id),
+  center_game_id INTEGER REFERENCES games(game_id),
   forward1_id INTEGER REFERENCES players(player_id),
+  forward1_game_id INTEGER REFERENCES games(game_id),
   forward2_id INTEGER REFERENCES players(player_id),
+  forward2_game_id INTEGER REFERENCES games(game_id),
   guard1_id INTEGER REFERENCES players(player_id),
+  guard1_game_id INTEGER REFERENCES games(game_id),
   guard2_id INTEGER REFERENCES players(player_id),
+  guard2_game_id INTEGER REFERENCES games(game_id),
   t1_id INTEGER REFERENCES players(player_id),
+  t1_game_id INTEGER REFERENCES games(game_id),
   t2_id INTEGER REFERENCES players(player_id),
+  t2_game_id INTEGER REFERENCES games(game_id),
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  PRIMARY KEY (season, week, fantasy_team_id)
+  PRIMARY KEY (season, season_type, week, fantasy_team_id)
 );
+
+ALTER TABLE fantasy_lineups
+  ADD COLUMN IF NOT EXISTS center_game_id INTEGER REFERENCES games(game_id);
+ALTER TABLE fantasy_lineups
+  ADD COLUMN IF NOT EXISTS forward1_game_id INTEGER REFERENCES games(game_id);
+ALTER TABLE fantasy_lineups
+  ADD COLUMN IF NOT EXISTS forward2_game_id INTEGER REFERENCES games(game_id);
+ALTER TABLE fantasy_lineups
+  ADD COLUMN IF NOT EXISTS guard1_game_id INTEGER REFERENCES games(game_id);
+ALTER TABLE fantasy_lineups
+  ADD COLUMN IF NOT EXISTS guard2_game_id INTEGER REFERENCES games(game_id);
+ALTER TABLE fantasy_lineups
+  ADD COLUMN IF NOT EXISTS t1_game_id INTEGER REFERENCES games(game_id);
+ALTER TABLE fantasy_lineups
+  ADD COLUMN IF NOT EXISTS t2_game_id INTEGER REFERENCES games(game_id);
 
 CREATE TABLE IF NOT EXISTS fantasy_weeks (
   season INTEGER NOT NULL,
+  season_type TEXT NOT NULL DEFAULT 'regular',
   week INTEGER NOT NULL,
   label TEXT,
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,
   is_dynamic BOOLEAN DEFAULT FALSE,
   notes TEXT,
-  PRIMARY KEY (season, week),
+  PRIMARY KEY (season, season_type, week),
   CHECK (start_date <= end_date)
 );
 
@@ -153,20 +178,131 @@ CREATE TABLE IF NOT EXISTS sync_log (
   details TEXT
 );
 
+ALTER TABLE fantasy_weeks
+  ADD COLUMN IF NOT EXISTS season_type TEXT NOT NULL DEFAULT 'regular';
+ALTER TABLE fantasy_matchups
+  ADD COLUMN IF NOT EXISTS season_type TEXT NOT NULL DEFAULT 'regular';
+ALTER TABLE fantasy_lineups
+  ADD COLUMN IF NOT EXISTS season_type TEXT NOT NULL DEFAULT 'regular';
+
 CREATE INDEX IF NOT EXISTS idx_players_team ON players(team_id);
 CREATE INDEX IF NOT EXISTS idx_team_rosters_team ON team_rosters(team_id);
 CREATE INDEX IF NOT EXISTS idx_player_games_player ON player_games(player_id);
 CREATE INDEX IF NOT EXISTS idx_player_games_date ON player_games(game_date);
 CREATE INDEX IF NOT EXISTS idx_games_date ON games(game_date);
 CREATE INDEX IF NOT EXISTS idx_fantasy_weeks_season ON fantasy_weeks(season, start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_fantasy_weeks_season_type ON fantasy_weeks(season, season_type, start_date, end_date);
+
+-- Human prediction / pairwise game data. These tables are intentionally separate
+-- from fantasy league rosters so the game can be used by any league participant.
+CREATE TABLE IF NOT EXISTS pairwise_comparisons (
+  pair_id TEXT PRIMARY KEY,
+  season INTEGER NOT NULL DEFAULT 2026,
+  pair_type TEXT,
+  reason TEXT,
+  projected_winner TEXT CHECK (projected_winner IN ('A', 'B') OR projected_winner IS NULL),
+  actual_winner TEXT CHECK (actual_winner IN ('A', 'B') OR actual_winner IS NULL),
+  player_a JSONB NOT NULL,
+  player_b JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS prediction_users (
+  user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  browser_key TEXT UNIQUE,
+  display_name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS pairwise_picks (
+  pick_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  pair_id TEXT NOT NULL REFERENCES pairwise_comparisons(pair_id),
+  user_id UUID REFERENCES prediction_users(user_id),
+  mode TEXT NOT NULL DEFAULT 'practice' CHECK (mode IN ('practice', 'collect')),
+  pick_side TEXT NOT NULL CHECK (pick_side IN ('A', 'B')),
+  confidence INTEGER NOT NULL DEFAULT 3 CHECK (confidence BETWEEN 1 AND 5),
+  correct BOOLEAN,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS player_predictions (
+  prediction_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES prediction_users(user_id),
+  season INTEGER NOT NULL DEFAULT 2026,
+  player_id INTEGER REFERENCES players(player_id),
+  prediction_type TEXT NOT NULL DEFAULT 'player_pick',
+  predicted_value NUMERIC,
+  confidence INTEGER CHECK (confidence BETWEEN 1 AND 5),
+  notes TEXT,
+  outcome_value NUMERIC,
+  correct BOOLEAN,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pairwise_comparisons_season ON pairwise_comparisons(season);
+CREATE INDEX IF NOT EXISTS idx_pairwise_picks_user ON pairwise_picks(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_pairwise_picks_pair ON pairwise_picks(pair_id);
+CREATE INDEX IF NOT EXISTS idx_player_predictions_user ON player_predictions(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_players_position ON players(position);
+CREATE INDEX IF NOT EXISTS idx_teams_conference ON teams(conference_name);
+
+CREATE TABLE IF NOT EXISTS draft_configurations (
+  season INTEGER PRIMARY KEY,
+  franchise_picks JSONB NOT NULL DEFAULT '[]'::jsonb,
+  snake_order JSONB NOT NULL DEFAULT '[]'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE draft_configurations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS draft_configurations_public_read ON draft_configurations;
+CREATE POLICY draft_configurations_public_read ON draft_configurations FOR SELECT USING (true);
+
+CREATE TABLE IF NOT EXISTS draft_selections (
+  selection_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  season INTEGER NOT NULL DEFAULT 2026,
+  round_number INTEGER NOT NULL CHECK (round_number BETWEEN 0 AND 17),
+  pick_number INTEGER NOT NULL,
+  team_code TEXT NOT NULL,
+  player_id INTEGER NOT NULL REFERENCES players(player_id),
+  player_name TEXT NOT NULL,
+  drafted_position TEXT NOT NULL,
+  college_team_name TEXT,
+  headshot TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (season, pick_number),
+  UNIQUE (season, player_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_draft_selections_season ON draft_selections(season, pick_number);
+ALTER TABLE draft_selections ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS draft_selections_public_read ON draft_selections;
+CREATE POLICY draft_selections_public_read ON draft_selections FOR SELECT USING (true);
+
+ALTER TABLE pairwise_comparisons ENABLE ROW LEVEL SECURITY;
+ALTER TABLE prediction_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pairwise_picks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE player_predictions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS pairwise_comparisons_public_read ON pairwise_comparisons;
+CREATE POLICY pairwise_comparisons_public_read ON pairwise_comparisons FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS prediction_users_service_only ON prediction_users;
+DROP POLICY IF EXISTS pairwise_picks_service_only ON pairwise_picks;
+DROP POLICY IF EXISTS player_predictions_service_only ON player_predictions;
+
+DROP FUNCTION IF EXISTS roster_snapshot(BOOLEAN, INTEGER);
 
 CREATE OR REPLACE FUNCTION roster_snapshot(include_dnp BOOLEAN DEFAULT FALSE, row_limit INTEGER DEFAULT 50)
 RETURNS TABLE (
   player_id INTEGER,
   first_name TEXT,
   last_name TEXT,
+  team_id INTEGER,
+  headshot TEXT,
   "position" TEXT,
   team_name TEXT,
+  conference_name TEXT,
   ppg NUMERIC,
   mpg NUMERIC,
   fgm NUMERIC,
@@ -212,8 +348,11 @@ LANGUAGE sql AS $$
     p.player_id,
     p.first_name,
     p.last_name,
+    p.team_id,
+    p.headshot,
     p.position AS "position",
     COALESCE(t.display_name, t.name, p.team_id::text) AS team_name,
+    t.conference_name,
     s.ppg,
     s.mpg,
     s.fgm,
@@ -353,9 +492,12 @@ LANGUAGE sql AS $$
   LIMIT row_limit;
 $$;
 
+DROP FUNCTION IF EXISTS fantasy_week_options(INTEGER);
+
 CREATE OR REPLACE FUNCTION fantasy_week_options(season_param INTEGER)
 RETURNS TABLE (
   season INTEGER,
+  season_type TEXT,
   week INTEGER,
   label TEXT,
   start_date DATE,
@@ -366,6 +508,7 @@ RETURNS TABLE (
 LANGUAGE sql AS $$
   SELECT
     season,
+    season_type,
     week,
     COALESCE(label, 'Week ' || week::text) AS label,
     start_date,
@@ -374,7 +517,7 @@ LANGUAGE sql AS $$
     notes
   FROM fantasy_weeks
   WHERE season = season_param
-  ORDER BY week;
+  ORDER BY season_type, week;
 $$;
 
 CREATE OR REPLACE FUNCTION team_scoreboard_range(start_date DATE, end_date DATE, row_limit INTEGER DEFAULT 10)
@@ -421,9 +564,17 @@ LANGUAGE sql AS $$
   LIMIT row_limit;
 $$;
 
-CREATE OR REPLACE FUNCTION fantasy_lineup_scores(season_param INTEGER, week_param INTEGER)
+DROP FUNCTION IF EXISTS fantasy_lineup_scores(INTEGER, INTEGER);
+DROP FUNCTION IF EXISTS fantasy_lineup_scores(INTEGER, INTEGER, TEXT);
+
+CREATE OR REPLACE FUNCTION fantasy_lineup_scores(
+  season_param INTEGER,
+  week_param INTEGER,
+  season_type_param TEXT DEFAULT 'regular'
+)
 RETURNS TABLE (
   season INTEGER,
+  season_type TEXT,
   week INTEGER,
   fantasy_team_id INTEGER,
   starter_points INTEGER,
@@ -436,50 +587,82 @@ LANGUAGE sql AS $$
     SELECT start_date, end_date
     FROM fantasy_weeks
     WHERE season = season_param
+      AND season_type = season_type_param
       AND week = week_param
   ),
   lineups AS (
     SELECT *
     FROM fantasy_lineups
     WHERE season = season_param
+      AND season_type = season_type_param
       AND week = week_param
   ),
   slots AS (
-    SELECT season, week, fantasy_team_id, center_id AS player_id, true AS is_starter, 'C' AS slot
+    SELECT season, season_type, week, fantasy_team_id, center_id AS player_id, center_game_id AS game_id, true AS is_starter, 'C' AS slot
     FROM lineups
     UNION ALL
-    SELECT season, week, fantasy_team_id, forward1_id AS player_id, true AS is_starter, 'F1' AS slot
+    SELECT season, season_type, week, fantasy_team_id, forward1_id AS player_id, forward1_game_id AS game_id, true AS is_starter, 'F1' AS slot
     FROM lineups
     UNION ALL
-    SELECT season, week, fantasy_team_id, forward2_id AS player_id, true AS is_starter, 'F2' AS slot
+    SELECT season, season_type, week, fantasy_team_id, forward2_id AS player_id, forward2_game_id AS game_id, true AS is_starter, 'F2' AS slot
     FROM lineups
     UNION ALL
-    SELECT season, week, fantasy_team_id, guard1_id AS player_id, true AS is_starter, 'G1' AS slot
+    SELECT season, season_type, week, fantasy_team_id, guard1_id AS player_id, guard1_game_id AS game_id, true AS is_starter, 'G1' AS slot
     FROM lineups
     UNION ALL
-    SELECT season, week, fantasy_team_id, guard2_id AS player_id, true AS is_starter, 'G2' AS slot
+    SELECT season, season_type, week, fantasy_team_id, guard2_id AS player_id, guard2_game_id AS game_id, true AS is_starter, 'G2' AS slot
     FROM lineups
     UNION ALL
-    SELECT season, week, fantasy_team_id, t1_id AS player_id, false AS is_starter, 'T1' AS slot
+    SELECT season, season_type, week, fantasy_team_id, t1_id AS player_id, t1_game_id AS game_id, false AS is_starter, 'T1' AS slot
     FROM lineups
     UNION ALL
-    SELECT season, week, fantasy_team_id, t2_id AS player_id, false AS is_starter, 'T2' AS slot
+    SELECT season, season_type, week, fantasy_team_id, t2_id AS player_id, t2_game_id AS game_id, false AS is_starter, 'T2' AS slot
     FROM lineups
   ),
-  games AS (
+  chosen AS (
     SELECT
       s.season,
+      s.season_type,
       s.week,
       s.fantasy_team_id,
       s.is_starter,
       s.slot,
-      pg.pts
+      s.player_id,
+      COALESCE(
+        s.game_id,
+        fg.game_id
+      ) AS chosen_game_id
     FROM slots s
-    JOIN player_games pg ON pg.player_id = s.player_id
-    JOIN week_range w ON pg.game_date >= w.start_date AND pg.game_date <= w.end_date
+    LEFT JOIN players p ON p.player_id = s.player_id
+    LEFT JOIN LATERAL (
+      SELECT g.game_id
+      FROM games g
+      JOIN week_range w
+        ON g.game_date >= w.start_date
+       AND g.game_date <= w.end_date
+      WHERE p.team_id IS NOT NULL
+        AND (g.home_team_id = p.team_id OR g.away_team_id = p.team_id)
+      ORDER BY g.game_date ASC NULLS LAST, g.game_id ASC
+      LIMIT 1
+    ) fg ON true
+  ),
+  games AS (
+    SELECT
+      c.season,
+      c.season_type,
+      c.week,
+      c.fantasy_team_id,
+      c.is_starter,
+      c.slot,
+      pg.pts
+    FROM chosen c
+    LEFT JOIN player_games pg
+      ON pg.player_id = c.player_id
+     AND pg.game_id = c.chosen_game_id
   )
   SELECT
     season,
+    season_type,
     week,
     fantasy_team_id,
     COALESCE(SUM(pts) FILTER (WHERE is_starter), 0) AS starter_points,
@@ -487,13 +670,18 @@ LANGUAGE sql AS $$
     COALESCE(SUM(pts) FILTER (WHERE slot = 'T2'), 0) AS t2_points,
     COALESCE(SUM(pts) FILTER (WHERE is_starter), 0) AS total_points
   FROM games
-  GROUP BY season, week, fantasy_team_id;
+  GROUP BY season, season_type, week, fantasy_team_id;
 $$;
+
+DROP FUNCTION IF EXISTS fantasy_lineup_details(INTEGER, INTEGER, INTEGER);
+DROP FUNCTION IF EXISTS fantasy_lineup_details(INTEGER, INTEGER, TEXT, INTEGER);
+DROP FUNCTION IF EXISTS fantasy_lineup_details(INTEGER, INTEGER, INTEGER, TEXT);
 
 CREATE OR REPLACE FUNCTION fantasy_lineup_details(
   season_param INTEGER,
   week_param INTEGER,
-  team_param INTEGER
+  team_param INTEGER,
+  season_type_param TEXT DEFAULT 'regular'
 )
 RETURNS TABLE (
   slot TEXT,
@@ -502,6 +690,7 @@ RETURNS TABLE (
   last_name TEXT,
   team_id INTEGER,
   team_abbr TEXT,
+  game_datetime TIMESTAMPTZ,
   game_date DATE,
   points INTEGER,
   status TEXT
@@ -511,41 +700,61 @@ LANGUAGE sql AS $$
     SELECT start_date, end_date
     FROM fantasy_weeks
     WHERE season = season_param
+      AND season_type = season_type_param
       AND week = week_param
   ),
   lineup AS (
     SELECT *
     FROM fantasy_lineups
     WHERE season = season_param
+      AND season_type = season_type_param
       AND week = week_param
       AND fantasy_team_id = team_param
   ),
   slots AS (
-    SELECT 'C'::text AS slot, center_id AS player_id FROM lineup
-    UNION ALL SELECT 'F1', forward1_id FROM lineup
-    UNION ALL SELECT 'F2', forward2_id FROM lineup
-    UNION ALL SELECT 'G1', guard1_id FROM lineup
-    UNION ALL SELECT 'G2', guard2_id FROM lineup
-    UNION ALL SELECT 'T1', t1_id FROM lineup
-    UNION ALL SELECT 'T2', t2_id FROM lineup
+    SELECT 'C'::text AS slot, center_id AS player_id, center_game_id AS game_id FROM lineup
+    UNION ALL SELECT 'F1', forward1_id, forward1_game_id FROM lineup
+    UNION ALL SELECT 'F2', forward2_id, forward2_game_id FROM lineup
+    UNION ALL SELECT 'G1', guard1_id, guard1_game_id FROM lineup
+    UNION ALL SELECT 'G2', guard2_id, guard2_game_id FROM lineup
+    UNION ALL SELECT 'T1', t1_id, t1_game_id FROM lineup
+    UNION ALL SELECT 'T2', t2_id, t2_game_id FROM lineup
   ),
-  points_by_player AS (
+  chosen AS (
     SELECT
-      pg.player_id,
-      SUM(pg.pts)::INTEGER AS points,
-      MAX(pg.game_date) AS game_date
-    FROM player_games pg
-    JOIN week_range w ON pg.game_date >= w.start_date AND pg.game_date <= w.end_date
-    GROUP BY pg.player_id
+      s.slot,
+      s.player_id,
+      COALESCE(
+        s.game_id,
+        fg.game_id
+      ) AS chosen_game_id
+    FROM slots s
+    LEFT JOIN players p ON p.player_id = s.player_id
+    LEFT JOIN LATERAL (
+      SELECT g.game_id
+      FROM games g
+      JOIN week_range w
+        ON g.game_date >= w.start_date
+       AND g.game_date <= w.end_date
+      WHERE p.team_id IS NOT NULL
+        AND (g.home_team_id = p.team_id OR g.away_team_id = p.team_id)
+      ORDER BY g.game_date ASC NULLS LAST, g.game_id ASC
+      LIMIT 1
+    ) fg ON true
   ),
-  last_game AS (
-    SELECT DISTINCT ON (pg.player_id)
-      pg.player_id,
+  chosen_games AS (
+    SELECT
+      c.slot,
+      c.player_id,
+      g.game_datetime AS game_datetime,
+      COALESCE(pg.game_date, g.game_date) AS game_date,
+      pg.pts::INTEGER AS points,
       g.status
-    FROM player_games pg
-    JOIN games g ON g.game_id = pg.game_id
-    JOIN week_range w ON pg.game_date >= w.start_date AND pg.game_date <= w.end_date
-    ORDER BY pg.player_id, pg.game_date DESC NULLS LAST, pg.game_id DESC
+    FROM chosen c
+    LEFT JOIN player_games pg
+      ON pg.player_id = c.player_id
+     AND pg.game_id = c.chosen_game_id
+    LEFT JOIN games g ON g.game_id = c.chosen_game_id
   )
   SELECT
     s.slot,
@@ -554,14 +763,16 @@ LANGUAGE sql AS $$
     p.last_name,
     p.team_id,
     t.abbreviation AS team_abbr,
-    pbp.game_date,
-    pbp.points,
-    lg.status
+    cg.game_datetime,
+    cg.game_date,
+    cg.points,
+    cg.status
   FROM slots s
   LEFT JOIN players p ON p.player_id = s.player_id
   LEFT JOIN teams t ON t.team_id = p.team_id
-  LEFT JOIN points_by_player pbp ON pbp.player_id = s.player_id
-  LEFT JOIN last_game lg ON lg.player_id = s.player_id;
+  LEFT JOIN chosen_games cg
+    ON cg.player_id = s.player_id
+   AND cg.slot = s.slot;
 $$;
 
 CREATE OR REPLACE FUNCTION fantasy_roster(team_id INTEGER, season INTEGER DEFAULT NULL, include_dnp BOOLEAN DEFAULT FALSE)

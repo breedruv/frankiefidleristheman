@@ -49,19 +49,27 @@ export default async function RootLayout({ children }) {
                 <p className="brand-subtitle">Fantasy College Basketball Hub</p>
               </div>
             </div>
-            <nav className="site-nav">
-              <Link href="/">Home</Link>
-              <Link href="/scoreboard">Scoreboard</Link>
-              <Link href="/matchup">Matchup</Link>
-              <Link href="/roster">Roster</Link>
-              <PositionRosterNav players={players} />
-              <Link href="/compare">Compare</Link>
-              <Link href="/draft">Draft</Link>
-              <Link href="/admin/weeks">Admin</Link>
+            <nav className="site-nav" aria-label="Primary navigation">
+              <div className="nav-primary">
+                <Link href="/draft">Draft</Link>
+                <Link className="nav-highlight" href="/picks">Game</Link>
+              </div>
+              <details className="nav-more">
+                <summary>More</summary>
+                <div className="nav-more-menu">
+                  <PositionRosterNav players={players} />
+                  <Link href="/">Home</Link>
+                  <Link href="/scoreboard">Scoreboard</Link>
+                  <Link href="/matchup">Matchup</Link>
+                  <Link href="/roster">Roster</Link>
+                  <Link href="/compare">Compare</Link>
+                  <Link href="/admin/weeks">Admin</Link>
+                </div>
+              </details>
             </nav>
             <div className="header-actions">
               <button className="ghost-pill" type="button">Week 7</button>
-              <button className="solid-pill" type="button">Import CSV</button>
+              <Link className="solid-pill" href="/admin/import">Import CSV</Link>
             </div>
           </header>
           <main>{children}</main>

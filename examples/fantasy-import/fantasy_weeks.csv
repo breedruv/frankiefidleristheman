@@ -1,0 +1,3 @@
+season,season_type,week,label,start_date,end_date,is_dynamic,notes
+2026,preseason,1,Preseason Week 1,2026-10-20,2026-10-26,false,Preseason tournament
+2026,regular,1,Week 1,2026-11-01,2026-11-07,false,Opening week

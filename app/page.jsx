@@ -1,7 +1,7 @@
 import { getHomeStats, getTopPerformers } from "../lib/queries";
 
 const matchups = [
-  { teamA: "Andrew", teamB: "Partner", scoreA: 287, scoreB: 269, tiebreaker: "Bench +18" },
+  { teamA: "Andrew", teamB: "Sam", scoreA: 287, scoreB: 269, tiebreaker: "Bench +18" },
   { teamA: "North Squad", teamB: "South Squad", scoreA: 255, scoreB: 244, tiebreaker: "Bench +11" }
 ];
 

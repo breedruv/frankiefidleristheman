@@ -1,0 +1,145 @@
+Team,Position,Player Name,Player ID,Team Name,Team ID,Round number,Pick Number
+M/B,C,T. Reed Jr.-CONN,5105809,UConn Huskies,41,4,40
+M/B,C,A. Page-NU,5060696,Northwestern Wildcats,77,8,72
+M/B,C,C. Wiggins-FSU,5105448,Florida State Seminoles,52,12,104
+M/B,F,Cam. Boozer-DUKE,5041935,Duke Blue Devils,150,0,5
+M/B,F,D. Williams-NCSU,4937074,NC State Wolfpack,152,1,9
+M/B,F,Y. Lendeborg-MICH,5175737,Michigan Wolverines,130,6,56
+M/B,F,M. Ajayi-BUT,5176517,Butler Bulldogs,2086,10,88
+M/B,F,N. Anderson-RICE,5243364,Rice Owls,242,11,89
+M/B,G,C. Ross-MARQ,5105598,Marquette Golden Eagles,269,2,24
+M/B,G,J. Riley-ECU,4683942,East Carolina Pirates,151,3,25
+M/B,G,J. Simpson-UTSA,5111919,UTSA Roadrunners,2636,5,41
+M/B,G,M. Thomas-ARK,5041951,Arkansas Razorbacks,8,7,57
+M/B,G,R. Rice-USC,4684634,USC Trojans,30,9,73
+M/B,G,D. Claude-WASH,5105606,Washington Huskies,264,13,105
+M/B,G,D. Hand Jr.-BC,4683629,Boston College Eagles,103,14,120
+M/B,G,J. Bradley-ARIZ,4432737,Arizona Wildcats,12,15,121
+M/B,G,J. Sellers-PROV,4898010,Providence Friars,2507,16,136
+M/B,G,D. McDaniel-MEM,5105805,Memphis Tigers,235,17,137
+A/S,C,C. Wilson-UNC,5095151,North Carolina Tar Heels,153,0,6
+A/S,C,K. Murphy-AUB,4683756,Auburn Tigers,2,10,87
+A/S,C,P. Ngongba II-DUKE,4873209,Duke Blue Devils,150,12,103
+A/S,F,N. Martinelli-NU,5105832,Northwestern Wildcats,77,1,10
+A/S,F,K. Peat-ARIZ,5041953,Arizona Wildcats,12,4,39
+A/S,F,T. Carroll-XAV,4684289,Xavier Musketeers,2752,5,42
+A/S,F,P. Sandfort-NEB,4858604,Nebraska Cornhuskers,158,6,55
+A/S,F,D. Swain-TEX,4848625,Texas Longhorns,251,11,90
+A/S,G,R. Saunders-BYU,5105462,BYU Cougars,252,2,23
+A/S,G,R. Conwell-LOU,5107157,Louisville Cardinals,97,3,26
+A/S,G,B. Stirtz-IOWA,5241364,Iowa Hawkeyes,2294,7,58
+A/S,G,K. Boswell-ILL,4684269,Illinois Fighting Illini,356,8,71
+A/S,G,N. Pack-OU,4576062,Oklahoma Sooners,201,9,74
+A/S,G,C. Anderson-TTU,5060701,Texas Tech Red Raiders,2641,13,106
+A/S,F,T. Bilodeau-UCLA,5105626,UCLA Bruins,26,14,119
+A/S,G,B. Smith-PUR,5105854,Purdue Boilermakers,2509,15,122
+A/S,F,C. Carr-MSU,4872740,Michigan State Spartans,127,16,135
+A/S,G,A. Roy-OKST,4701189,Oklahoma State Cowboys,197,17,138
+SL,C,N. Bittle-ORE,4432586,Oregon Ducks,2483,3,27
+SL,C,C. Tilly-OSU,5109790,Ohio State Buckeyes,194,5,43
+SL,C,I. Nelson-USF,5107251,South Florida Bulls,58,12,102
+SL,F,K. Hall-AUB,5075625,Auburn Tigers,2,0,7
+SL,F,C. Baker-Mazara-USC,4700877,USC Trojans,30,1,11
+SL,F,C. Tyson-MINN,5107970,Minnesota Golden Gophers,135,2,22
+SL,F,A. Hansberry-VT,4685673,Virginia Tech Hokies,259,9,75
+SL,F,T. Spillers-WAKE,5176758,Wake Forest Demon Deacons,154,11,91
+SL,G,N. Boyd-WIS,4702654,Wisconsin Badgers,275,4,38
+SL,G,J. Edwards-PROV,5175064,Providence Friars,2507,6,54
+SL,G,B. Miller-SMU,4898283,SMU Mustangs,2567,7,59
+SL,G,R. Kugel-UCF,5105529,UCF Knights,2116,8,70
+SL,G,D. Ames-CAL,4845373,California Golden Bears,25,10,86
+SL,G,J. Pierre Jr.-SMU,4703115,SMU Mustangs,2567,13,107
+SL,F,O. Freeman-CREI,4894465,Creighton Bluejays,156,14,118
+SL,G,X. Brown-OU,5174633,Oklahoma Sooners,201,15,123
+SL,G,D. Acuff Jr.-ARK,5142620,Arkansas Razorbacks,8,16,134
+SL,G,T. Yessoufou-BAY,5095152,Baylor Bears,239,17,139
+D/D,C,N. Ament-TENN,5164559,Tennessee Volunteers,2633,2,21
+D/D,C,H. Veesaar-UNC,5105571,North Carolina Tar Heels,153,9,76
+D/D,C,H. Steinbach-WASH,5281370,Washington Huskies,264,12,101
+D/D,F,A. Dybantsa-BYU,5142718,BYU Cougars,252,1,12
+D/D,F,T. De Ridder-UVA,5311846,Virginia Cavaliers,258,4,37
+D/D,F,C. Okpara-STAN,4684745,Stanford Cardinal,24,8,69
+D/D,F,M. Momcilovic-ISU,4848637,Iowa State Cyclones,66,10,85
+D/D,F,M. Sutton-LSU,5107264,LSU Tigers,99,11,92
+D/D,G,P.J. Haggerty-KSU,5106275,Kansas State Wildcats,2306,0,1
+D/D,G,L. Philon Jr.-ALA,4873090,Alabama Crimson Tide,333,3,28
+D/D,G,B. Lindsay-VILL,5174291,Villanova Wildcats,222,5,44
+D/D,G,C. Carr-BAY,5113969,Baylor Bears,239,6,53
+D/D,G,F. Loyer-PUR,5105853,Purdue Boilermakers,2509,7,60
+D/D,G,D. Coit-MD,5108023,Maryland Terrapins,120,13,108
+D/D,F,B. Dunning Jr.-PITT,4683675,Pittsburgh Panthers,221,14,117
+D/D,G,A. Tobiason-TEM,5240369,Temple Owls,218,15,124
+D/D,F,J. Camden-CAL,4684155,California Golden Bears,25,16,133
+D/D,G,M. Rice-MD,4709133,Maryland Terrapins,120,17,140
+Len,C,J. Milicevic-XAV,5101673,Xavier Musketeers,2752,6,52
+Len,C,M. Vokietaitis-TEX,5239838,Texas Longhorns,251,7,61
+Len,C,C. Corhen-PITT,4712902,Pittsburgh Panthers,221,10,84
+Len,F,J. Toppin-TTU,5143604,Texas Tech Red Raiders,2641,0,2
+Len,F,Z. Ejiofor-SJU,5106262,St. John's Red Storm,2599,1,13
+Len,F,T. Haugh-FLA,5080489,Florida Gators,57,3,29
+Len,F,B. Hopkins-SJU,4565698,St. John's Red Storm,2599,9,77
+Len,F,M. Mgbako-TA&M,4683779,Texas A&M Aggies,245,12,100
+Len,G,D. Peterson-KU,5041955,Kansas Jayhawks,2305,2,20
+Len,G,M. Brown Jr.-LOU,5101761,Louisville Cardinals,97,4,36
+Len,G,R. Brumbaugh-TULN,5106280,Tulane Green Wave,2655,5,45
+Len,G,F. Bizjack-BUT,4848619,Butler Bulldogs,2086,8,68
+Len,G,K. Lewis-GTWN,5174952,Georgetown Hoyas,46,11,93
+Len,G,J.J. Starling-SYR,4683697,Syracuse Orange,183,13,109
+Len,F,B. Ndongo-GT,5142356,Georgia Tech Yellow Jackets,59,14,116
+Len,G,M. Johnson-SC,4710770,South Carolina Gamecocks,2579,15,125
+Len,C,A. Bonke-CLT,5240529,Charlotte 49ers,2429,16,132
+Len,C,T. Brazile-ARK,4698719,Arkansas Razorbacks,8,17,141
+Brandon,C,M. Nwoko-LSU,4895795,LSU Tigers,99,3,30
+Brandon,C,F. Bidunga-KU,5044426,Kansas Jayhawks,2305,4,35
+Brandon,C,R. Mast-NEB,4592677,Nebraska Cornhuskers,158,6,51
+Brandon,F,M. Reneau-MIA,5105798,Miami Hurricanes,2390,0,8
+Brandon,F,E. Ausar-USC,5106051,USC Trojans,30,5,46
+Brandon,F,C. Bell-CAL,4684627,California Golden Bears,25,7,62
+Brandon,F,D. Mirkovic-ILL,5311832,Illinois Fighting Illini,356,10,83
+Brandon,F,M. Dia-MISS,4712862,Ole Miss Rebels,145,12,99
+Brandon,G,J. Harris-WAKE,5142609,Wake Forest Demon Deacons,154,1,14
+Brandon,G,M. Burton-ND,5101623,Notre Dame Fighting Irish,87,2,19
+Brandon,G,K. Flemings-HOU,5149077,Houston Cougars,248,8,67
+Brandon,G,J. Shelstad-ORE,4845361,Oregon Ducks,2483,9,78
+Brandon,G,C. Westry-UAB,4683680,UAB Blazers,5,11,94
+Brandon,G,L. Wilkerson-IU,5105876,Indiana Hoosiers,84,13,110
+Brandon,G,J. Omojafo-USF,5241690,South Florida Bulls,58,14,115
+Brandon,G,P. McNeil-NCSU,4873151,NC State Wolfpack,152,15,126
+Brandon,F,M. Hodge-VILL,5175588,Villanova Wildcats,222,16,131
+Brandon,G,D. Dent-UCLA,5107782,UCLA Bruins,26,17,142
+John B,C,T. Kaufman-Renn-PUR,4897438,Purdue Boilermakers,2509,0,3
+John B,C,T. Ivisic-ILL,5214642,Illinois Fighting Illini,356,8,66
+John B,C,M. Diop-ASU,5311903,Arizona State Sun Devils,9,10,82
+John B,F,A. Condon-FLA,5174657,Florida Gators,57,3,31
+John B,F,J. Jefferson-ISU,4870564,Iowa State Cyclones,66,4,34
+John B,F,A. Karaban-CONN,4917149,UConn Huskies,41,6,50
+John B,F,D. Grant-RUTG,5061576,Rutgers Scarlet Knights,164,9,79
+John B,F,T. Nickel-VAN,4838721,Vanderbilt Commodores,238,12,98
+John B,G,J. Hubbard-MSST,4895740,Mississippi State Bulldogs,344,1,15
+John B,G,B. Thornton-OSU,5105837,Ohio State Buckeyes,194,2,18
+John B,G,A. Stojakovic-ILL,5175007,Illinois Fighting Illini,356,5,47
+John B,G,T. Lipsey-ISU,5106254,Iowa State Cyclones,66,7,63
+John B,G,J. Blackwell-WIS,5103630,Wisconsin Badgers,275,11,95
+John B,G,V. Miller-OKST,5238208,Oklahoma State Cowboys,197,13,111
+John B,F,B. Miller-CIN,5075626,Cincinnati Bearcats,2132,14,114
+John B,C,N. Winter-WIS,4895783,Wisconsin Badgers,275,15,127
+John B,G,D. McHenry-UTAH,4903216,Utah Utes,254,16,130
+John B,F,M. Johnson Jr.-MICH,4873153,Michigan Wolverines,130,17,143
+BJ,C,P. Payne-MD,5105823,Maryland Terrapins,120,3,32
+BJ,C,G. Emejuru-ECU,4896939,East Carolina Pirates,151,7,64
+BJ,C,S. Rancik-COLO,5144392,Colorado Buffaloes,38,9,80
+BJ,F,T. DeVries-IU,4837238,Indiana Hoosiers,84,2,17
+BJ,F,M. Mitchell-MIZ,4433285,Missouri Tigers,142,4,33
+BJ,F,D. Freeman-SYR,4873145,Syracuse Orange,183,5,48
+BJ,F,B. Bradford-CLT,5239828,Charlotte 49ers,2429,8,65
+BJ,F,D. Green-TLSA,5174623,Tulsa Golden Hurricane,202,10,81
+BJ,G,T. Brown-UTAH,5177233,Utah Utes,254,0,4
+BJ,G,E. Okorie-STAN,5258459,Stanford Cardinal,24,1,16
+BJ,G,K. Giles-WICH,5107508,Wichita State Shockers,2724,6,49
+BJ,G,D. Ford-TEM,4684720,Temple Owls,218,11,96
+BJ,G,A. Holloway-ALA,4684276,Alabama Crimson Tide,333,12,97
+BJ,G,H. Huff-WVU,4897365,West Virginia Mountaineers,277,13,112
+BJ,F,J. Kohler-MSU,5105815,Michigan State Spartans,127,14,113
+BJ,F,T. Lawal-VT,5106040,Virginia Tech Hokies,259,15,128
+BJ,G,K. Mingo-PSU,5144108,Penn State Nittany Lions,213,16,129
+BJ,G,J. Pinion-USF,4699760,South Florida Bulls,58,17,144

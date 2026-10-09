@@ -22,6 +22,7 @@ async function addWeeks(formData) {
   }
 
   const season = Number(formData.get("season"));
+  const seasonType = formData.get("season_type")?.toString() || "regular";
   const rowCount = Number(formData.get("row_count")) || DEFAULT_ROW_COUNT;
 
   if (!season) {
@@ -43,6 +44,7 @@ async function addWeeks(formData) {
 
     entries.push({
       season,
+      season_type: seasonType,
       week,
       start_date: startDate,
       end_date: endDate,
@@ -59,7 +61,8 @@ async function addWeeks(formData) {
   const { data: existing } = await supabase
     .from("fantasy_weeks")
     .select("week,start_date,end_date")
-    .eq("season", season);
+    .eq("season", season)
+    .eq("season_type", seasonType);
 
   const existingRanges = (existing || []).map((row) => ({
     start: row.start_date,
@@ -93,7 +96,7 @@ async function addWeeks(formData) {
     }
   }
 
-  await supabase.from("fantasy_weeks").upsert(entries, { onConflict: "season,week" });
+  await supabase.from("fantasy_weeks").upsert(entries, { onConflict: "season,season_type,week" });
 
   revalidatePath("/scoreboard");
   revalidatePath("/admin/weeks");
@@ -105,11 +108,17 @@ async function deleteWeek(formData) {
     return;
   }
   const season = Number(formData.get("season"));
+  const seasonType = formData.get("season_type")?.toString() || "regular";
   const week = Number(formData.get("week"));
   if (!season || !week) {
     return;
   }
-  await supabase.from("fantasy_weeks").delete().eq("season", season).eq("week", week);
+  await supabase
+    .from("fantasy_weeks")
+    .delete()
+    .eq("season", season)
+    .eq("season_type", seasonType)
+    .eq("week", week);
   revalidatePath("/scoreboard");
   revalidatePath("/admin/weeks");
 }
@@ -120,6 +129,7 @@ async function upsertMatchup(formData) {
     return;
   }
   const season = Number(formData.get("season"));
+  const seasonType = formData.get("season_type")?.toString() || "regular";
   const week = Number(formData.get("week"));
   const fantasyTeamId = Number(formData.get("fantasy_team_id"));
   const opponentTeamId = Number(formData.get("opponent_fantasy_team_id"));
@@ -131,11 +141,12 @@ async function upsertMatchup(formData) {
   await supabase.from("fantasy_matchups").upsert(
     [{
       season,
+      season_type: seasonType,
       week,
       fantasy_team_id: fantasyTeamId,
       opponent_fantasy_team_id: opponentTeamId
     }],
-    { onConflict: "season,week,fantasy_team_id" }
+    { onConflict: "season,season_type,week,fantasy_team_id" }
   );
 
   revalidatePath("/admin/weeks");
@@ -147,6 +158,7 @@ async function deleteMatchup(formData) {
     return;
   }
   const season = Number(formData.get("season"));
+  const seasonType = formData.get("season_type")?.toString() || "regular";
   const week = Number(formData.get("week"));
   const fantasyTeamId = Number(formData.get("fantasy_team_id"));
   if (!season || !week || !fantasyTeamId) {
@@ -156,6 +168,7 @@ async function deleteMatchup(formData) {
     .from("fantasy_matchups")
     .delete()
     .eq("season", season)
+    .eq("season_type", seasonType)
     .eq("week", week)
     .eq("fantasy_team_id", fantasyTeamId);
   revalidatePath("/admin/weeks");
@@ -163,8 +176,10 @@ async function deleteMatchup(formData) {
 
 export default async function AdminWeeksPage({ searchParams }) {
   const season = Number(searchParams?.season) || currentSeason();
-  const weeks = await getFantasyWeekOptions(season);
-  const matchups = await getFantasyMatchups(season);
+  const seasonType =
+    typeof searchParams?.season_type === "string" ? searchParams.season_type : "regular";
+  const weeks = await getFantasyWeekOptions(season, seasonType);
+  const matchups = await getFantasyMatchups(season, seasonType);
   const fantasyTeams = await getFantasyTeams();
   const teamNameById = new Map(
     fantasyTeams.map((team) => [team.fantasy_team_id, team.name || team.short_code])
@@ -183,6 +198,13 @@ export default async function AdminWeeksPage({ searchParams }) {
             <div className="filter-card">
               <label>Season</label>
               <input name="season" type="number" defaultValue={season} />
+            </div>
+            <div className="filter-card">
+              <label>Phase</label>
+              <select name="season_type" defaultValue={seasonType}>
+                <option value="regular">Regular</option>
+                <option value="preseason">Preseason</option>
+              </select>
             </div>
           </div>
           <table className="table" style={{ marginTop: "1rem" }}>
@@ -248,6 +270,7 @@ export default async function AdminWeeksPage({ searchParams }) {
                   <td>
                     <form action={deleteWeek}>
                       <input type="hidden" name="season" value={week.season} />
+                      <input type="hidden" name="season_type" value={week.season_type ?? seasonType} />
                       <input type="hidden" name="week" value={week.week} />
                       <button className="ghost-pill" type="submit">Delete</button>
                     </form>
@@ -269,6 +292,13 @@ export default async function AdminWeeksPage({ searchParams }) {
             <div className="filter-card">
               <label>Season</label>
               <input name="season" type="number" defaultValue={season} />
+            </div>
+            <div className="filter-card">
+              <label>Phase</label>
+              <select name="season_type" defaultValue={seasonType}>
+                <option value="regular">Regular</option>
+                <option value="preseason">Preseason</option>
+              </select>
             </div>
             <div className="filter-card">
               <label>Week</label>
@@ -325,6 +355,7 @@ export default async function AdminWeeksPage({ searchParams }) {
                   <td>
                     <form action={deleteMatchup}>
                       <input type="hidden" name="season" value={matchup.season} />
+                      <input type="hidden" name="season_type" value={matchup.season_type ?? seasonType} />
                       <input type="hidden" name="week" value={matchup.week} />
                       <input type="hidden" name="fantasy_team_id" value={matchup.fantasy_team_id} />
                       <button className="ghost-pill" type="submit">Delete</button>

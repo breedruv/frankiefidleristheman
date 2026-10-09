@@ -20,6 +20,7 @@ async function saveLineup(formData) {
   }
 
   const season = Number(formData.get("season"));
+  const seasonType = formData.get("season_type")?.toString() || "regular";
   const week = Number(formData.get("week"));
   const fantasyTeamId = Number(formData.get("fantasy_team_id"));
 
@@ -35,6 +36,13 @@ async function saveLineup(formData) {
   const guard2Id = parseId(formData.get("guard2_id"));
   const t1Id = parseId(formData.get("t1_id"));
   const t2Id = parseId(formData.get("t2_id"));
+  const centerGameId = parseId(formData.get("center_game_id"));
+  const forward1GameId = parseId(formData.get("forward1_game_id"));
+  const forward2GameId = parseId(formData.get("forward2_game_id"));
+  const guard1GameId = parseId(formData.get("guard1_game_id"));
+  const guard2GameId = parseId(formData.get("guard2_game_id"));
+  const t1GameId = parseId(formData.get("t1_game_id"));
+  const t2GameId = parseId(formData.get("t2_game_id"));
 
   if (!season || !week || !fantasyTeamId) {
     return;
@@ -47,22 +55,30 @@ async function saveLineup(formData) {
   await supabase.from("fantasy_lineups").upsert(
     [{
       season,
+      season_type: seasonType,
       week,
       fantasy_team_id: fantasyTeamId,
       center_id: centerId,
+      center_game_id: centerGameId,
       forward1_id: forward1Id,
+      forward1_game_id: forward1GameId,
       forward2_id: forward2Id,
+      forward2_game_id: forward2GameId,
       guard1_id: guard1Id,
+      guard1_game_id: guard1GameId,
       guard2_id: guard2Id,
+      guard2_game_id: guard2GameId,
       t1_id: t1Id,
-      t2_id: t2Id
+      t1_game_id: t1GameId,
+      t2_id: t2Id,
+      t2_game_id: t2GameId
     }],
-    { onConflict: "season,week,fantasy_team_id" }
+    { onConflict: "season,season_type,week,fantasy_team_id" }
   );
 
   revalidatePath("/matchup");
   revalidatePath("/scoreboard");
-  redirect(`/matchup?season=${season}&week=${week}&saved=1`);
+  redirect(`/matchup?season=${season}&season_type=${seasonType}&week=${week}&saved=1`);
 }
 
 export const dynamic = "force-dynamic";
@@ -72,6 +88,13 @@ const formatDate = (value) => {
   const [year, month, day] = value.split("-");
   if (!year || !month || !day) return value;
   return `${month}/${day}/${year}`;
+};
+
+const formatShortDate = (value) => {
+  if (!value) return "--";
+  const [year, month, day] = value.split("-");
+  if (!month || !day) return value;
+  return `${Number(month)}/${Number(day)}`;
 };
 
 const normalizePosition = (value) => {
@@ -131,14 +154,18 @@ export default async function MatchupPage({ searchParams }) {
   const teamId = 2;
   const resolvedSearchParams = await searchParams;
   const season = Number(resolvedSearchParams?.season) || new Date().getFullYear();
-  const rawWeekOptions = await getFantasyWeekOptions(season);
+  const seasonType =
+    typeof resolvedSearchParams?.season_type === "string"
+      ? resolvedSearchParams.season_type
+      : "regular";
+  const rawWeekOptions = await getFantasyWeekOptions(season, seasonType);
   const weekOptions = rawWeekOptions.map((week) => ({
     ...week,
     week: Number(week.week)
   }));
   const selectedWeekNumber = Number(resolvedSearchParams?.week) || (weekOptions[0]?.week ?? null);
   const selectedWeek = weekOptions.find((week) => week.week === selectedWeekNumber) || null;
-  const matchups = await getFantasyMatchups(season);
+  const matchups = await getFantasyMatchups(season, seasonType);
   const fantasyTeams = await getFantasyTeams();
   const ncaaTeams = await getNcaaTeams();
   const teamAbbrById = new Map(
@@ -163,7 +190,7 @@ export default async function MatchupPage({ searchParams }) {
   const forwards = roster.filter((player) => normalizePosition(player.player_position) === "F");
   const guards = roster.filter((player) => normalizePosition(player.player_position) === "G");
   const existingLineup = selectedWeekNumber
-    ? await getFantasyLineup({ season, week: selectedWeekNumber, teamId })
+    ? await getFantasyLineup({ season, seasonType, week: selectedWeekNumber, teamId })
     : null;
   const weekSchedule = selectedWeek
     ? await getFantasyWeekPlayerSchedule({
@@ -185,16 +212,54 @@ export default async function MatchupPage({ searchParams }) {
     : [];
   const lockedPlayerIds = selectedWeek ? Array.from(getLockedPlayerIds(weekScheduleAll)) : [];
 
+  const gameOptionsByPlayerId = {};
+  if (selectedWeek) {
+    const grouped = new Map();
+    weekScheduleAll.forEach((game) => {
+      if (!game?.player_id) return;
+      const key = String(game.player_id);
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      grouped.get(key).push(game);
+    });
+
+    grouped.forEach((games, playerId) => {
+      const sorted = [...games].sort((a, b) => {
+        const aTime = parseGameTimeMs(a);
+        const bTime = parseGameTimeMs(b);
+        if (aTime && bTime) return aTime - bTime;
+        if (aTime) return -1;
+        if (bTime) return 1;
+        return String(a?.game_id ?? "").localeCompare(String(b?.game_id ?? ""));
+      });
+      gameOptionsByPlayerId[playerId] = sorted.map((game) => {
+        const opponent =
+          teamAbbrById.get(game.opponent_id) ??
+          game.opponent_name ??
+          "--";
+        const location = game.home_away ? ` (${game.home_away})` : "";
+        return {
+          value: String(game.game_id),
+          label: `${formatShortDate(game.game_date)} vs ${opponent}${location}`
+        };
+      });
+    });
+  }
+
   return (
     <div className="page">
-            <section className="section">
+      <section className="section">
         <div className="section-title">
           <h2>My Team</h2>
           <span className="section-subtitle">Fantasy Team #{teamId} roster</span>
         </div>
         <form className="week-picker" method="get">
-          <span>Week</span>
           <input type="hidden" name="season" value={season} />
+          <select name="season_type" defaultValue={seasonType}>
+            <option value="regular">Regular</option>
+            <option value="preseason">Preseason</option>
+          </select>
           <select name="week" defaultValue={selectedWeekNumber ?? ""}>
             {weekOptions.map((week) => (
               <option key={`${week.season}-${week.week}`} value={week.week}>
@@ -211,7 +276,7 @@ export default async function MatchupPage({ searchParams }) {
         </p>
       </section>
       <section className="section">
-        <div className="card">
+        <div className="card upcoming-matchup">
           <div className="section-title">
             <h2>Upcoming Matchup</h2>
             <span className="section-subtitle">
@@ -230,18 +295,19 @@ export default async function MatchupPage({ searchParams }) {
             </div>
           </div>
 
-          <div className="lineup-divider" />
+          <div className="matchup-divider" />
 
           <div className="section-title">
             <h2>Starting Lineup</h2>
             <span className="section-subtitle">Select 1C, 2F, 2G + T1/T2</span>
           </div>
-          <form className="section" action={saveLineup}>
+          <form className="section lineup-form" action={saveLineup}>
             <input type="hidden" name="season" value={season} />
+            <input type="hidden" name="season_type" value={seasonType} />
             <input type="hidden" name="week" value={selectedWeekNumber ?? ""} />
             <input type="hidden" name="fantasy_team_id" value={teamId} />
             <LineupSelector
-              key={`${season}-${selectedWeekNumber ?? "na"}`}
+              key={`${season}-${seasonType}-${selectedWeekNumber ?? "na"}`}
               centers={centers}
               forwards={forwards}
               guards={guards}
@@ -249,6 +315,7 @@ export default async function MatchupPage({ searchParams }) {
               teamAbbrById={teamAbbrByIdObject}
               initialLineup={existingLineup}
               lockedPlayerIds={lockedPlayerIds}
+              gameOptionsByPlayerId={gameOptionsByPlayerId}
             />
             <div>
               <button className="solid-pill" type="submit" disabled={!selectedWeekNumber}>

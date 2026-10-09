@@ -5,6 +5,8 @@ import {
   getFantasyLineupScores,
   getFantasyLineupDetails
 } from "../../lib/queries";
+import AutoSubmitSelect from "../components/AutoSubmitSelect";
+import StatusLabel from "../components/StatusLabel";
 
 export const dynamic = "force-dynamic";
 
@@ -34,21 +36,32 @@ const formatPlayerName = (row) => {
 export default async function ScoreboardPage({ searchParams }) {
   const resolvedSearchParams = await searchParams;
   const season = Number(resolvedSearchParams?.season) || new Date().getFullYear();
-  const rawWeekOptions = await getFantasyWeekOptions(season);
+  const seasonType =
+    typeof resolvedSearchParams?.season_type === "string"
+      ? resolvedSearchParams.season_type
+      : "regular";
+  const rawWeekOptions = await getFantasyWeekOptions(season, seasonType);
   const weekOptions = rawWeekOptions.map((week) => ({
     ...week,
     week: Number(week.week)
   }));
   const selectedWeekNumber = Number(resolvedSearchParams?.week) || (weekOptions[0]?.week ?? null);
   const selectedWeek = weekOptions.find((week) => week.week === selectedWeekNumber) || null;
+  const selectedGameParam =
+    typeof resolvedSearchParams?.game === "string" ? resolvedSearchParams.game : "overall";
 
-  const matchups = await getFantasyMatchups(season);
+  const weekSelectOptions = weekOptions.map((week) => ({
+    value: String(week.week),
+    label: `${week.label} (${formatDate(week.start_date)} -> ${formatDate(week.end_date)})`
+  }));
+
+  const matchups = await getFantasyMatchups(season, seasonType);
   const fantasyTeams = await getFantasyTeams();
   const teamNameById = new Map(
     fantasyTeams.map((team) => [team.fantasy_team_id, team.name || team.short_code])
   );
   const lineupScores = selectedWeekNumber
-    ? await getFantasyLineupScores({ season, week: selectedWeekNumber })
+    ? await getFantasyLineupScores({ season, seasonType, week: selectedWeekNumber })
     : [];
   const scoresByTeam = new Map(
     lineupScores.map((row) => [row.fantasy_team_id, row.starter_points ?? 0])
@@ -85,6 +98,29 @@ export default async function ScoreboardPage({ searchParams }) {
     return a.primaryTeamId - b.primaryTeamId;
   });
 
+  const matchupCardsOrdered = matchupCards.map((matchup, index) => ({
+    ...matchup,
+    gameIndex: index + 1
+  }));
+
+  const gameOptions = matchupCardsOrdered.map((matchup) => {
+    const teamAName =
+      teamNameById.get(matchup.teamADisplay) ?? `Team ${matchup.teamADisplay}`;
+    const teamBName =
+      teamNameById.get(matchup.teamBDisplay) ?? `Team ${matchup.teamBDisplay}`;
+    return {
+      value: String(matchup.gameIndex),
+      label: `Game ${matchup.gameIndex}: ${teamAName} vs ${teamBName}`
+    };
+  });
+
+  const selectedGameIndex =
+    selectedGameParam !== "overall" ? Number(selectedGameParam) - 1 : null;
+  const selectedMatchups =
+    Number.isInteger(selectedGameIndex) && selectedGameIndex >= 0
+      ? matchupCardsOrdered.slice(selectedGameIndex, selectedGameIndex + 1)
+      : matchupCardsOrdered;
+
   const teamIds = Array.from(
     new Set(
       weekMatchups.flatMap((row) => [row.fantasy_team_id, row.opponent_fantasy_team_id])
@@ -95,6 +131,7 @@ export default async function ScoreboardPage({ searchParams }) {
       teamId,
       details: await getFantasyLineupDetails({
         season,
+        seasonType,
         week: selectedWeekNumber,
         teamId
       })
@@ -134,10 +171,8 @@ export default async function ScoreboardPage({ searchParams }) {
     return (
       <div className="lineup-block">
         <div className="lineup-header">
-          <h3>{teamNameById.get(teamId) ?? `Team ${teamId}`}</h3>
-          <span className="section-subtitle">
-            vs {teamNameById.get(opponentId) ?? `Team ${opponentId}`}
-          </span>
+          <h3 style={{textAlign: "center"}}>{teamNameById.get(teamId) ?? `Team ${teamId}`}</h3>
+
         </div>
         <table className="table lineup-table">
           <thead>
@@ -161,24 +196,26 @@ export default async function ScoreboardPage({ searchParams }) {
                   <td>{row?.team_abbr ?? "--"}</td>
                   <td>{row?.game_date ? formatShortDate(row.game_date) : "--"}</td>
                   <td>{row?.points ?? "--"}</td>
-                  <td>{row?.status ?? "--"}</td>
+                  <td>
+                    <StatusLabel status={row?.status} gameDatetime={row?.game_datetime} />
+                  </td>
                 </tr>
               );
             })}
             <tr className="lineup-summary">
               <td>Total</td>
-              <td>{`Margin ${formatNumber(margin, 0)}`}</td>
-              <td>{`Starters ${starterTotal}`}</td>
+              <td>{`Margin`}</td>
+              <td>{`${formatNumber(margin, 0)}`}</td>
               <td></td>
               <td><strong>{teamTotal}</strong></td>
               <td></td>
             </tr>
             <tr className="lineup-summary">
-              <td>Average</td>
-              <td>{`Avg Margin ${formatNumber(averageMargin, 1)}`}</td>
-              <td>{`Starters ${formatNumber(averageStarters, 1)}`}</td>
+              <td>Avg.</td>
+              <td>{`Avg Margin`} </td>
+              <td>{`${formatNumber(averageMargin, 1)}`}</td>
               <td></td>
-              <td></td>
+              <td>{`${formatNumber(teamTotal / 5, 1)}`}</td>
               <td></td>
             </tr>
             {slotOrder.slice(5).map((slot) => {
@@ -191,7 +228,9 @@ export default async function ScoreboardPage({ searchParams }) {
                   <td>{row?.team_abbr ?? "--"}</td>
                   <td>{row?.game_date ? formatShortDate(row.game_date) : "--"}</td>
                   <td>{row?.points ?? "--"}</td>
-                  <td>{row?.status ?? "--"}</td>
+                  <td>
+                    <StatusLabel status={row?.status} gameDatetime={row?.game_datetime} />
+                  </td>
                 </tr>
               );
             })}
@@ -206,18 +245,35 @@ export default async function ScoreboardPage({ searchParams }) {
       <section className="section">
         <div className="section-title">
           <h2>Scoreboard</h2>
-          <form className="week-picker" method="get">
-            <span>Week</span>
-            <input type="hidden" name="season" value={season} />
-            <select name="week" defaultValue={selectedWeekNumber ?? ""}>
-              {weekOptions.map((week) => (
-                <option key={`${week.season}-${week.week}`} value={week.week}>
-                  {`${week.label} (${formatDate(week.start_date)} -> ${formatDate(week.end_date)})`}
-                </option>
-              ))}
-            </select>
-            <button className="ghost-pill" type="submit">Apply</button>
-          </form>
+          <div className="header-selects">
+            <AutoSubmitSelect
+              label="Phase"
+              name="season_type"
+              options={[
+                { value: "regular", label: "Regular" },
+                { value: "preseason", label: "Preseason" }
+              ]}
+              defaultValue={seasonType}
+              hiddenInputs={{
+                season: season,
+                week: selectedWeekNumber ?? "",
+                game: selectedGameParam
+              }}
+              className="week-picker"
+            />
+            <AutoSubmitSelect
+              label="Week"
+              name="week"
+              options={weekSelectOptions}
+              defaultValue={selectedWeekNumber ? String(selectedWeekNumber) : ""}
+              hiddenInputs={{
+                season: season,
+                season_type: seasonType,
+                game: selectedGameParam
+              }}
+              className="week-picker"
+            />
+          </div>
         </div>
         <p className="section-subtitle">
           Fantasy matchup grid for the selected week. Totals use submitted starting lineups.
@@ -227,14 +283,53 @@ export default async function ScoreboardPage({ searchParams }) {
             {`${formatDate(selectedWeek.start_date)} -> ${formatDate(selectedWeek.end_date)}`}
           </p>
         ) : null}
-        <div className="score-grid">
-          {matchupCards.length === 0 ? (
+        {gameOptions.length > 0 ? (
+          <div className="score-grid-header">
+            <AutoSubmitSelect
+              label="View"
+              name="game"
+              options={[
+                { value: "overall", label: "Overall" },
+                ...gameOptions
+              ]}
+              defaultValue={selectedGameParam}
+              hiddenInputs={{
+                season: season,
+                season_type: seasonType,
+                week: selectedWeekNumber ?? ""
+              }}
+              className="week-picker game-picker"
+            />
+          </div>
+        ) : null}
+        {selectedGameParam !== "overall" ? (
+            <form className="game-picker" method="get">
+              <input type="hidden" name="season" value={season} />
+              <input type="hidden" name="week" value={selectedWeekNumber ?? ""} />
+              <input type="hidden" name="game" value="overall" />
+              <button className="solid-pill" type="submit">Back to Overall</button>
+            </form>
+        ) : null}
+        <div className={`score-grid${selectedGameParam !== "overall" ? " score-grid-single" : ""}`}>
+          {selectedMatchups.length === 0 ? (
             <div className="card">
               <p className="section-subtitle">No matchups found for this week.</p>
             </div>
           ) : (
-            matchupCards.map((matchup) => (
+            selectedMatchups.map((matchup) => (
               <div className="card matchup-card" key={matchup.key}>
+                {selectedGameParam === "overall" ? (
+                  <div className="matchup-card-actions">
+                    <form method="get">
+                      <input type="hidden" name="season" value={season} />
+                      <input type="hidden" name="week" value={selectedWeekNumber ?? ""} />
+                      <input type="hidden" name="game" value={matchup.gameIndex} />
+                      <button className="solid-pill" type="submit">
+                        View Additional Details
+                      </button>
+                    </form>
+                  </div>
+                ) : null}
                 {renderTeamBlock(matchup.teamADisplay, matchup.teamBDisplay)}
                 <div className="lineup-divider" />
                 {renderTeamBlock(matchup.teamBDisplay, matchup.teamADisplay)}
@@ -264,7 +359,7 @@ export default async function ScoreboardPage({ searchParams }) {
           <div className="section">
             <div>
               <span className="tag">Featured</span>
-              <h3>Andrew vs Partner</h3>
+              <h3>Andrew vs Sam</h3>
               <p className="section-subtitle">Tip: Saturday 3:00 PM</p>
             </div>
             <div>

@@ -2,7 +2,7 @@ import argparse
 import json
 import os
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 
 import requests
 
@@ -39,6 +39,7 @@ def parse_args():
     parser.add_argument("--sleep", type=float, default=DEFAULT_SLEEP_SECONDS, help="Delay between requests")
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT, help="HTTP timeout in seconds")
     parser.add_argument("--since", type=str, default=None, help="Only sync games on/after YYYY-MM-DD")
+    parser.add_argument("--up-to", type=str, default=None, help="Only sync games on/before YYYY-MM-DD")
     parser.add_argument("--force", action="store_true", help="Re-import games even if stats exist")
     parser.add_argument("--draft-order", type=str, default=None, help="Draft order mapping like MB=1,AS=2")
     parser.add_argument("--apply-schema", action="store_true", help="Apply db/schema.sql before running")
@@ -595,6 +596,9 @@ def is_final_status(status):
 def extract_event_status(event):
     status = event.get("status") or {}
     status_type = status.get("type") or {}
+    short_detail = status_type.get("shortDetail")
+    if short_detail:
+        return short_detail
     description = status_type.get("description")
     name = status_type.get("name")
     state = status_type.get("state")
@@ -611,6 +615,9 @@ def extract_event_status(event):
     competition = (event.get("competitions") or [None])[0] or {}
     comp_status = competition.get("status") or {}
     comp_type = comp_status.get("type") or {}
+    comp_short_detail = comp_type.get("shortDetail")
+    if comp_short_detail:
+        return comp_short_detail
     comp_desc = comp_type.get("description")
     comp_name = comp_type.get("name")
     comp_state = comp_type.get("state")
@@ -729,6 +736,38 @@ def extract_game_date(summary):
     return parse_iso_date(game_info.get("date"))
 
 
+def extract_game_from_summary(summary, season, game_id):
+    header = summary.get("header") or {}
+    competition = (header.get("competitions") or [None])[0] or {}
+    competitors = competition.get("competitors") or []
+
+    home = next((c for c in competitors if c.get("homeAway") == "home"), None)
+    away = next((c for c in competitors if c.get("homeAway") == "away"), None)
+
+    date_value = competition.get("date") or header.get("date")
+    game_datetime = parse_iso_datetime(date_value)
+    game_date = game_datetime.date() if game_datetime else parse_iso_date(date_value)
+    if not game_date:
+        game_date = extract_game_date(summary)
+
+    status = extract_event_status({
+        "status": competition.get("status") or header.get("status") or {},
+        "competitions": [competition],
+    })
+
+    return {
+        "game_id": str(game_id),
+        "game_date": game_date,
+        "game_datetime": game_datetime,
+        "season": season or (game_date.year if game_date else None),
+        "home_team_id": str((home or {}).get("team", {}).get("id")) if home else None,
+        "home_team_name": (home or {}).get("team", {}).get("displayName"),
+        "away_team_id": str((away or {}).get("team", {}).get("id")) if away else None,
+        "away_team_name": (away or {}).get("team", {}).get("displayName"),
+        "status": status,
+    }
+
+
 def extract_stats_rows(summary, season, game_id):
     boxscore = summary.get("boxscore") or {}
     players_by_team = boxscore.get("players") or []
@@ -796,7 +835,7 @@ def extract_stats_rows(summary, season, game_id):
     return rows
 
 
-def run_stats(conn, season, sleep, timeout, since_date=None, force=False):
+def run_stats(conn, season, sleep, timeout, since_date=None, up_to_date=None, force=False):
     with conn.cursor() as cur:
         last_run = get_last_run(cur, "stats")
         if since_date:
@@ -806,6 +845,11 @@ def run_stats(conn, season, sleep, timeout, since_date=None, force=False):
                 print("Invalid --since date. Use YYYY-MM-DD.")
 
         today = datetime.now(timezone.utc).date()
+        if up_to_date:
+            try:
+                today = datetime.fromisoformat(up_to_date).date()
+            except ValueError:
+                print("Invalid --up-to date. Use YYYY-MM-DD.")
         if last_run:
             cur.execute(
                 """
@@ -843,6 +887,10 @@ def run_stats(conn, season, sleep, timeout, since_date=None, force=False):
 
             url = f"{ESPN_BASE}/summary?event={game_id}"
             summary = fetch_json(url, timeout)
+
+            game = extract_game_from_summary(summary, season, game_id)
+            if game and game.get("game_id"):
+                upsert_game(cur, game)
 
             rows = extract_stats_rows(summary, season, game_id)
             for row in rows:
@@ -1021,7 +1069,7 @@ def get_games_supabase(client, since_date=None, up_to_date=None):
     return [row["game_id"] for row in rows if row.get("game_id")]
 
 
-def run_stats_supabase(client, season, sleep, timeout, since_date=None, force=False):
+def run_stats_supabase(client, season, sleep, timeout, since_date=None, up_to_date=None, force=False):
     last_run = get_last_run_supabase(client, "stats")
     if since_date:
         try:
@@ -1030,6 +1078,11 @@ def run_stats_supabase(client, season, sleep, timeout, since_date=None, force=Fa
             print("Invalid --since date. Use YYYY-MM-DD.")
 
     today = datetime.now(timezone.utc).date().isoformat()
+    if up_to_date:
+        try:
+            today = datetime.fromisoformat(up_to_date).date().isoformat()
+        except ValueError:
+            print("Invalid --up-to date. Use YYYY-MM-DD.")
     since_value = last_run.date().isoformat() if last_run else None
     game_ids = get_games_supabase(client, since_value, today)
     if not game_ids and last_run:
@@ -1045,10 +1098,19 @@ def run_stats_supabase(client, season, sleep, timeout, since_date=None, force=Fa
         url = f"{ESPN_BASE}/summary?event={game_id}"
         summary = fetch_json(url, timeout)
 
+        game = extract_game_from_summary(summary, season, game_id)
+        if game and game.get("game_id"):
+            game_payload = dict(game)
+            if isinstance(game_payload.get("game_date"), date):
+                game_payload["game_date"] = game_payload["game_date"].isoformat()
+            if isinstance(game_payload.get("game_datetime"), datetime):
+                game_payload["game_datetime"] = game_payload["game_datetime"].isoformat()
+            client.upsert("games", [game_payload], "game_id")
+
         rows = extract_stats_rows(summary, season, game_id)
         player_ids = sorted({row["player_id"] for row in rows if row.get("player_id")})
         existing_players = client.select_in("players", "player_id", player_ids, "player_id")
-        existing_set = {row.get("player_id") for row in existing_players}
+        existing_set = {str(row.get("player_id")) for row in existing_players}
 
         payload = []
         for row in rows:
@@ -1146,6 +1208,7 @@ def main():
                 args.sleep,
                 args.timeout,
                 since_date=args.since,
+                up_to_date=args.up_to,
                 force=args.force,
             )
         return
@@ -1173,6 +1236,7 @@ def main():
                 args.sleep,
                 args.timeout,
                 since_date=args.since,
+                up_to_date=args.up_to,
                 force=args.force,
             )
     finally:
