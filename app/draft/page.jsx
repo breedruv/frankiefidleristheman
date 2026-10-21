@@ -7,7 +7,7 @@ export default function DraftHubPage() {
   return <div className="page draft-hub-page">
     <DraftCountdown />
     <section className="draft-hub-hero">
-      <div><span className="draft-countdown-kicker">Draft headquarters</span><h1>Prepare for draft night.</h1><p>The draft happens off-site. Use this area to organize the board, research players, and keep the final results in one place.</p></div>
+      <div><span className="draft-countdown-kicker">Draft headquarters</span><h1>Prepare for draft night.</h1><p>Research players, keep Andrew’s and Sam’s top 10 in view, and record every franchise and snake pick.</p></div>
       <div className="draft-hub-status"><span>Draft status</span><strong>Preparation</strong><small>Draft night · November 22 at 7:00 PM ET</small></div>
     </section>
     <section className="draft-hub-links">

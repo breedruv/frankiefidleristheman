@@ -8,6 +8,7 @@ async function main() {
   await client.connect();
   try {
     await client.query(fs.readFileSync("db/schema.sql", "utf8"));
+    await client.query(fs.readFileSync("db/draft-workspace.sql", "utf8"));
     console.log("Supabase schema applied successfully.");
   } finally {
     await client.end();

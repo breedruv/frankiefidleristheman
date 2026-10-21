@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Bebas_Neue, Archivo } from "next/font/google";
 import PositionRosterNav from "./components/PositionRosterNav";
 import { getFantasyRoster } from "../lib/queries";
+import { currentMember } from "../lib/auth";
+import AccountMenu from "./components/AccountMenu";
 
 export const dynamic = "force-dynamic";
 
@@ -19,13 +21,15 @@ const body = Archivo({
 });
 
 export const metadata = {
-  title: "CBB War Room",
+  title: "Btown Sparties",
   description: "Fantasy college basketball hub for weekly matchups, rosters, and draft planning."
 };
 
 export default async function RootLayout({ children }) {
+  const member = await currentMember();
+  const publicOnly = process.env.PRE_DRAFT_PRIVATE === "true" && !member;
   const teamId = 2;
-  const roster = await getFantasyRoster({ teamId });
+  const roster = publicOnly ? [] : await getFantasyRoster({ teamId });
   const players = roster
     .map((player) => {
       const name = `${player.first_name ?? ""} ${player.last_name ?? ""}`.trim();
@@ -51,10 +55,11 @@ export default async function RootLayout({ children }) {
             </div>
             <nav className="site-nav" aria-label="Primary navigation">
               <div className="nav-primary">
-                <Link href="/draft">Draft</Link>
-                <Link className="nav-highlight" href="/picks">Game</Link>
+                <Link href="/draft/board">Draft Board</Link>
+                {!publicOnly && <Link href="/draft/players">Player Focus</Link>}
+                {!publicOnly && <Link className="nav-highlight" href="/picks">Game</Link>}
               </div>
-              <details className="nav-more">
+              {!publicOnly && <details className="nav-more">
                 <summary>More</summary>
                 <div className="nav-more-menu">
                   <PositionRosterNav players={players} />
@@ -63,19 +68,19 @@ export default async function RootLayout({ children }) {
                   <Link href="/matchup">Matchup</Link>
                   <Link href="/roster">Roster</Link>
                   <Link href="/compare">Compare</Link>
+                  <Link href="/admin/draft">Draft setup</Link>
                   <Link href="/admin/weeks">Admin</Link>
                 </div>
-              </details>
+              </details>}
             </nav>
             <div className="header-actions">
-              <button className="ghost-pill" type="button">Week 7</button>
-              <Link className="solid-pill" href="/admin/import">Import CSV</Link>
+              <AccountMenu member={member} />
             </div>
           </header>
           <main>{children}</main>
           <footer className="site-footer">
             <span>Data refresh: matchups every 5 minutes, game stats daily.</span>
-            <span>Built for a two-person league. Public access for now.</span>
+            <span>{publicOnly ? "Public draft board · Research reserved for Andrew and Sam." : "Andrew and Sam’s fantasy basketball workspace."}</span>
           </footer>
         </div>
       </body>

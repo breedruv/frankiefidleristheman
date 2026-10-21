@@ -1,17 +1,96 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
-
-const teams = ["MB", "AS", "SL", "DD", "Len", "Brandon", "John B", "BJ"];
-function pickInfo(pickNumber) { if (pickNumber <= teams.length) return { pickNumber, roundNumber: 0, teamCode: teams[pickNumber - 1] }; const roundNumber = Math.floor((pickNumber - teams.length - 1) / teams.length) + 1; const slot = (pickNumber - teams.length - 1) % teams.length; return { pickNumber, roundNumber, teamCode: roundNumber % 2 === 1 ? teams[slot] : teams[teams.length - slot - 1] }; }
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { DEFAULT_TEAMS, draftOrders, nextPick } from "../../lib/draftRules.mjs";
 
 export default function DraftPickEntry({ history = null, readOnly = false }) {
-  const [picks, setPicks] = useState([]); const [query, setQuery] = useState(""); const [results, setResults] = useState([]); const [selected, setSelected] = useState(null); const [focused, setFocused] = useState(false); const [saving, setSaving] = useState(false); const [message, setMessage] = useState("");
-  const historyPicks = useMemo(() => Object.values(history?.draftSlots || {}).map((player) => ({ pick_number: Number(player.pickNumber), team_code: player.teamCode, player_name: player.name, drafted_position: player.position, player_id: player.playerId })).sort((a, b) => a.pick_number - b.pick_number), [history]);
-  const displayedPicks = readOnly ? historyPicks : picks; const next = useMemo(() => pickInfo(displayedPicks.length + 1), [displayedPicks.length]);
-  const timeline = useMemo(() => Array.from({ length: 5 }, (_, offset) => { const pickNumber = Math.max(1, next.pickNumber - 2) + offset; const player = displayedPicks.find((pick) => pick.pick_number === pickNumber); return { ...pickInfo(pickNumber), teamCode: player?.team_code || pickInfo(pickNumber).teamCode, player, current: pickNumber === next.pickNumber }; }), [next.pickNumber, displayedPicks]);
-  useEffect(() => { if (!readOnly) fetch("/api/draft-picks").then((response) => response.json()).then((data) => setPicks(data.picks || [])); }, [readOnly]);
-  useEffect(() => { const timer = window.setTimeout(() => { fetch(`/api/draft-players?q=${encodeURIComponent(query)}`).then((response) => response.json()).then((data) => setResults(data.players || [])); }, 180); return () => window.clearTimeout(timer); }, [query]);
-  async function submit() { if (!selected) return; setSaving(true); setMessage(""); const response = await fetch("/api/draft-picks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...next, playerId: selected.playerId, playerName: selected.name, draftedPosition: selected.position, collegeTeamName: selected.college, headshot: selected.headshot }) }); const data = await response.json(); if (!response.ok) setMessage(data.error || "Unable to save pick."); else { setPicks((current) => [...current, data.pick]); setSelected(null); setQuery(""); setResults([]); setMessage(`Saved Pick ${next.pickNumber}. ${next.teamCode} is now complete.`); window.dispatchEvent(new Event("draft-pick-saved")); } setSaving(false); }
-  function searchBox() { return <div className="draft-pick-inline-search"><label>Search available players<input value={query} onFocus={() => setFocused(true)} onBlur={() => window.setTimeout(() => setFocused(false), 150)} onChange={(event) => setQuery(event.target.value)} placeholder="Search players…" /></label>{focused && results.length > 0 && <div className="draft-search-results">{results.map((player) => { const drafted = picks.some((pick) => Number(pick.player_id) === Number(player.playerId)); return <button type="button" disabled={drafted} className={`${selected?.playerId === player.playerId && selected?.position === player.position ? "selected" : ""} ${drafted ? "is-drafted" : ""}`} key={`${player.playerId}-${player.position}`} onClick={() => !drafted && setSelected(player)}><span className="draft-search-avatar">{player.headshot ? <img src={player.headshot} alt="" /> : "?"}</span><span><strong>{player.name}</strong><small>{player.college} · {player.position}{drafted ? " · Drafted" : ""}</small></span></button>; })}</div>}{selected && <div className="draft-inline-selected"><span className="draft-search-avatar"><img src={selected.headshot} alt="" /></span><div><strong>{selected.name}</strong><small>{selected.college} · Draft as {selected.position}</small></div><button className="solid-pill" type="button" disabled={saving} onClick={submit}>{saving ? "Saving…" : "Submit pick"}</button></div>}</div>; }
-  return <section className="draft-pick-entry"><div className="draft-pick-timeline" aria-label="Draft pick timeline">{timeline.map((item) => <div className={`draft-pick-timeline-card ${item.current ? "is-current" : ""} ${item.player ? "is-complete" : "is-open"}`} key={item.pickNumber}><span>Pick {item.pickNumber}</span><strong>{item.teamCode}</strong><small>{item.roundNumber === 0 ? "Franchise Round" : `Round ${item.roundNumber}`}</small>{item.player ? <><div className="draft-pick-timeline-player"><span className="draft-pick-timeline-avatar"><img src={`https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/${item.player.player_id}.png`} alt="" /></span><b>{item.player.player_name}</b></div><em>{item.player.drafted_position}</em></> : item.current && !readOnly ? searchBox() : <b>{item.current ? "History complete" : "Open"}</b>}</div>)}</div>{message && <p className="draft-pick-message">{message}</p>}</section>;
+  const [picks, setPicks] = useState([]);
+  const [orders, setOrders] = useState({ snake: DEFAULT_TEAMS, franchise: DEFAULT_TEAMS });
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [loadError, setLoadError] = useState("");
+  const [searchError, setSearchError] = useState("");
+  const currentCardRef = useRef(null);
+  const historyPicks = useMemo(() => Object.values(history?.draftSlots || {}).map((p) => ({ pick_number: Number(p.pickNumber), round_number: Number(p.round), team_code: p.teamCode, player_name: p.name, drafted_position: p.position, player_id: p.playerId })).sort((a, b) => a.pick_number - b.pick_number), [history]);
+  const displayed = history ? historyPicks : picks;
+  const next = nextPick(displayed, orders.snake, orders.franchise);
+  const retrying = !history && next && displayed.at(-1)?.blocked_team_code === next.teamCode;
+  useEffect(() => {
+    setSelected(null); setQuery(''); setResults([]); setSearchError('');
+  }, [next?.pickNumber, next?.teamCode]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const [configResponse, picksResponse] = await Promise.all([fetch('/api/draft-config'), history ? Promise.resolve(null) : fetch('/api/draft-picks')]);
+        if (!configResponse.ok || (picksResponse && !picksResponse.ok)) throw new Error();
+        const config = await configResponse.json();
+        const data = picksResponse ? await picksResponse.json() : null;
+        if (!cancelled) { setOrders(draftOrders(config.snakeOrder)); if (data) setPicks(data.picks); setLoadError(''); }
+      } catch { if (!cancelled) setLoadError('Unable to refresh draft state. Pick entry is paused until it reconnects.'); }
+    }
+    load();
+    const timer = setInterval(load, 5000);
+    window.addEventListener('draft-pick-saved', load);
+    return () => { cancelled = true; clearInterval(timer); window.removeEventListener('draft-pick-saved', load); };
+  }, [history]);
+
+  useEffect(() => {
+    if (readOnly || !query.trim()) { setResults([]); return; }
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/draft-players?q=${encodeURIComponent(query)}`, { signal: controller.signal });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
+        setResults(data.players); setSearchError('');
+      } catch (err) { if (err.name !== 'AbortError') { setResults([]); setSearchError(err.message || 'Unable to search.'); } }
+    }, 180);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [query, readOnly]);
+
+  async function submit(block = false) {
+    if (!selected || !next || saving || loadError) return;
+    setSaving(true); setMessage('');
+    try {
+      const response = await fetch('/api/draft-picks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...next, block, playerId: selected.playerId, draftedPosition: selected.position }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      setPicks((current) => [...current.filter((p) => p.pick_number !== data.pick.pick_number), data.pick].sort((a,b) => a.pick_number-b.pick_number));
+      setSelected(null); setQuery(''); setResults([]);
+      setMessage(block ? `${data.pick.team_code} retained ${selected.name}. ${next.teamCode} chooses again.` : `Pick ${next.pickNumber}: ${data.pick.team_code} selected ${selected.name}.`);
+    } catch (err) { setMessage(err.message || 'Unable to save. Please retry.'); }
+    finally { setSaving(false); window.dispatchEvent(new Event('draft-pick-saved')); }
+  }
+
+  const timeline = displayed.slice(-2).map((player) => ({ pickNumber: player.pick_number, roundNumber: player.round_number, teamCode: player.team_code, player }));
+  if (!history) {
+    const projected = [...displayed];
+    for (let i = 0; i < 3; i++) {
+      const upcoming = nextPick(projected, orders.snake, orders.franchise);
+      if (!upcoming) break;
+      timeline.push({ ...upcoming, current: i === 0 });
+      projected.push({ pick_number: upcoming.pickNumber, round_number: upcoming.roundNumber, team_code: upcoming.teamCode });
+    }
+  }
+  const eligibleBlocker = next?.roundNumber === 0 && selected?.blockingOwner && selected.blockingOwner !== next.teamCode ? selected.blockingOwner : null;
+  return <section className="draft-pick-entry">
+    <div className="draft-carousel-heading"><span>Pick carousel</span><div>{!readOnly && <Link href="/draft/players">Player Focus</Link>}<button type="button" onClick={() => currentCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })}>Current pick</button></div></div>
+    {loadError && <p role="alert">{loadError}</p>}
+    <div className="draft-pick-timeline" aria-label="Draft pick timeline">{timeline.map((item) => <div ref={item.current ? currentCardRef : null} className={`draft-pick-timeline-card ${item.current ? 'is-current' : ''} ${item.player ? 'is-complete' : 'is-open'}`} key={item.pickNumber}>
+      <span>Pick {item.pickNumber}{item.current ? ' - On the clock' : ''}</span><strong>{item.teamCode}</strong><small>{item.roundNumber === 0 ? 'Franchise round' : `Round ${item.roundNumber}`}</small>
+      {item.player ? <><div className="draft-pick-timeline-player"><b>{item.player.player_name}</b></div><em>{item.player.drafted_position}</em>{item.player.blocked_team_code && <span className="draft-block-label">Blocked {item.player.blocked_team_code}</span>}</> : <b>{item.current && retrying ? 'Choosing again' : item.current ? 'Choosing now' : 'Up next'}</b>}
+    </div>)}</div>
+    {!next && !history && <p>Draft complete. All franchise and snake selections are recorded.</p>}
+    {!readOnly && next && <div className="draft-entry-controls"><div className="draft-pick-inline-search"><label htmlFor="draft-player-search">Record {next.teamCode}'s selection<input id="draft-player-search" value={query} onChange={(event) => { setQuery(event.target.value); setSelected(null); }} placeholder="Search player or school..." autoComplete="off" /></label>
+      {results.length > 0 && !selected && <div className="draft-search-results">{results.map((player) => <button type="button" disabled={player.drafted} key={`${player.playerId}-${player.position}`} onClick={() => { setSelected(player); setResults([]); }}><span><strong>{player.name}</strong><small>{player.college} / {player.position}{player.drafted ? ' / Drafted' : ''}{player.blockingOwner ? ` / ${player.blockingOwner} can retain` : ' / Unrestricted'}</small></span></button>)}</div>}
+    </div>{searchError && <p role="alert">{searchError}</p>}
+    {selected && <div className="draft-selection-review"><div><strong>{selected.name}</strong><small>{selected.college} / Draft as {selected.position}</small></div><button type="button" className="solid-pill" disabled={saving || !!loadError} onClick={() => submit(false)}>{saving ? 'Saving...' : eligibleBlocker ? 'Allow selection' : 'Submit pick'}</button>{eligibleBlocker && <button type="button" className="ghost-pill" disabled={saving || !!loadError} onClick={() => submit(true)}>{eligibleBlocker} blocks and retains</button>}</div>}
+    </div>}
+    {message && <p role="status" className="draft-pick-message">{message}</p>}
+  </section>;
 }

@@ -16,9 +16,10 @@ function getRemaining() {
 }
 
 export default function DraftCountdown() {
-  const [remaining, setRemaining] = useState(() => getRemaining());
+  const [remaining, setRemaining] = useState({ days: "--", hours: "--", minutes: "--", seconds: "--", live: false });
 
   useEffect(() => {
+    setRemaining(getRemaining());
     const timer = window.setInterval(() => setRemaining(getRemaining()), 1000);
     return () => window.clearInterval(timer);
   }, []);

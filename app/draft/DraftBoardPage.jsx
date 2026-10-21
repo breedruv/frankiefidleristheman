@@ -2,6 +2,7 @@ import { getDraftPool } from "../../lib/queries";
 import DraftCountdown from "../components/DraftCountdown";
 import DraftBoardLayout from "../components/DraftBoardLayout";
 import DraftPickEntry from "../components/DraftPickEntry";
+import { currentMember } from "../../lib/auth";
 
 const formatNumber = (value, digits = 1) => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
@@ -11,7 +12,9 @@ const formatNumber = (value, digits = 1) => {
 };
 
 export default async function DraftBoardPage({ searchParams, history, season = "2026" }) {
-  const params = searchParams || {};
+  const member = await currentMember();
+  const publicOnly = process.env.PRE_DRAFT_PRIVATE === "true" && !member;
+  const params = await searchParams || {};
   const filters = {
     conference: params.conference || "All",
     position: params.position || "All",
@@ -19,21 +22,22 @@ export default async function DraftBoardPage({ searchParams, history, season = "
     minPpg: params.min_ppg || "",
     maxPpg: params.max_ppg || ""
   };
-  const allPlayers = await getDraftPool(500);
-  const draftPool = await getDraftPool(500, filters);
+  const allPlayers = publicOnly ? [] : await getDraftPool(500);
+  const draftPool = publicOnly ? [] : await getDraftPool(500, filters);
   const conferences = [...new Set(allPlayers.map((player) => player.conference_name).filter(Boolean))].sort();
   const teams = [...new Set(allPlayers.map((player) => player.team_name).filter(Boolean))].sort();
 
   return (
-    <div className="page">
+    <div className="page draft-board-page">
+      {!publicOnly && <div className="draft-subnav"><a className="active" href="/draft/board">Draft Board</a><a href="/draft/players">Player Focus</a><a href="/admin/draft">Draft setup</a></div>}
       <DraftCountdown />
       <div className="draft-season-nav"><span>Board view</span><a className={season === "2026" ? "active" : ""} href="/draft/board?season=2026">2026 Setup</a><a className={season === "demo" ? "active" : ""} href="/draft/board?season=demo&limit=40">Pick 40 Simulation</a><a className={season === "2025" ? "active" : ""} href="/draft/board?season=2025">2025 History</a></div>
-      {season === "2026" ? <DraftPickEntry /> : <DraftPickEntry history={history} readOnly />}
-      <DraftBoardLayout history={history} />
-      <section className="section">
+      {season === "2026" ? <DraftPickEntry readOnly={!member} /> : <DraftPickEntry history={history} readOnly />}
+      <DraftBoardLayout history={history} readOnly={!member} />
+      {!publicOnly && <><section className="section">
         <div className="section-title">
           <h2>Draft Prep Board</h2>
-          <span className="section-subtitle">Draft picks happen off-site. Use this page to prepare.</span>
+          <span className="section-subtitle">Research available players in Player Focus. Record current picks in the carousel above.</span>
         </div>
         <form className="filters" method="get">
           <div className="filter-card">
@@ -106,7 +110,7 @@ export default async function DraftBoardPage({ searchParams, history, season = "
             </tbody>
           </table>
         </div>
-      </section>
+      </section></>}
     </div>
   );
 }
