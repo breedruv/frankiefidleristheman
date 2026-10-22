@@ -464,7 +464,7 @@ def main():
         default="all",
         help="Which data to collect.",
     )
-    parser.add_argument("--season", type=int, default=2026)
+    parser.add_argument("--season", type=int, default=2027)
     parser.add_argument(
         "--output-dir",
         default=r"",

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 47" role="img" aria-label="NCAA half court">
+  <rect width="50" height="47" fill="#102f3b"/>
+  <g fill="none" stroke="#b4e4da" stroke-width="0.22" opacity="0.9">
+    <rect x="0.5" y="0.5" width="49" height="46"/>
+    <path d="M17 0.5v18.5h16V0.5M17 19h16"/>
+    <path d="M19 0.5v4h12v-4M20.5 4.5h9"/>
+    <circle cx="25" cy="1.25" r="0.45"/>
+    <path d="M21 19a4 4 0 0 0 8 0"/>
+    <path d="M17 19a8 8 0 0 0 16 0" stroke-dasharray="0.65 0.55"/>
+    <!-- NCAA three-point line: 3-foot corner lines plus a 22.15-foot arc. -->
+    <path d="M3 0.5v10.1M47 0.5v10.1M3 0.5h44"/>
+    <path d="M3 10.6A22.15 22.15 0 0 0 47 10.6"/>
+  </g>
+  <path d="M21.5 0.9h7" stroke="#b4e4da" stroke-width="0.3"/>
+</svg>

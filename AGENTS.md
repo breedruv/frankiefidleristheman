@@ -85,6 +85,11 @@ Build a Next.js web app used by Andrew and Sam to draft for their shared fantasy
 - Users should be able to add players while researching. Drafted players remain greyed out in their existing shortlist slots, count toward the ten-player limit, and must be manually removed. Do not automatically remove them, shift rankings, or backfill their slots when drafted.
 - Use Move up / Move down controls to manually reorder players without deleting and re-adding them. Do not automatically sort either list.
 - Andrew confirmed Draft.csv is the correct end-of-2025 fantasy-roster ownership snapshot for the 2026 franchise round. Use it when 2025 fantasy_rosters has not been loaded; do not infer ownership from NCAA rosters.
+- ESPN 100 is a freshman-only ranking with one eligible ranking year per player; display its year with the ranking and do not treat it as a multi-year player history.
+- Previous-season PPG rank is the player's rank among all players available in that season's player pool, calculated from that season's PPG.
+- Draftable player pool is limited to teams in the AAC, ACC, Big East, Big Ten, Big 12, and SEC for the active season. Conference membership should come from the current ESPN team metadata so realignment changes eligibility without manually rewriting the pool.
+- ESPN's source season can be one year ahead of the fantasy draft label (for example, ESPN season 2027 represents the 2026 fantasy draft pool). Preserve the ESPN season value and keep the fantasy draft season as a separate application concept.
+- Season-specific player attributes such as class/year, position, height, weight, and team should be preserved by player and source season rather than overwriting the current player profile.
 
 ### Project reference maintenance
 - Record confirmed product decisions and league rules in this AGENTS.md as discussions progress.

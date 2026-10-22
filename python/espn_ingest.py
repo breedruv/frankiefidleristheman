@@ -1,4 +1,5 @@
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 import time
@@ -8,6 +9,7 @@ import requests
 
 from espn_config import (
     AVAILABLE_TEAMS,
+    AVAILABLE_CONFERENCE_GROUPS,
     ESPN_BASE,
     DEFAULT_TIMEOUT,
     DEFAULT_SLEEP_SECONDS,
@@ -88,6 +90,29 @@ def fetch_json(url, timeout):
     return response.json()
 
 
+def discover_available_teams(timeout):
+    """Discover current teams, then keep only the configured conferences."""
+    payload = fetch_json(f"{ESPN_BASE}/teams?limit=1000", timeout)
+    leagues = payload.get("sports", [{}])[0].get("leagues", [])
+    rows = leagues[0].get("teams", []) if leagues else []
+    directory_ids = [int((row.get("team", row)).get("id")) for row in rows if (row.get("team", row)).get("id")]
+
+    def conference_team(team_id):
+        team = fetch_json(f"{ESPN_BASE}/teams/{team_id}", timeout).get("team") or {}
+        group = team.get("groups") or {}
+        group_id = str(group.get("id") or "")
+        return team_id if group_id.isdigit() and int(group_id) in AVAILABLE_CONFERENCE_GROUPS and team.get("isActive", True) else None
+
+    team_ids = []
+    with ThreadPoolExecutor(max_workers=12) as executor:
+        for team_id in executor.map(conference_team, directory_ids):
+            if team_id is not None:
+                team_ids.append(team_id)
+    if len(team_ids) < 50:
+        raise RuntimeError("ESPN conference discovery returned too few teams; using the configured fallback list.")
+    return sorted(set(team_ids))
+
+
 def parse_iso_date(value):
     if not value:
         return None
@@ -132,6 +157,16 @@ def parse_int(value):
         return int(value)
     except ValueError:
         return 0
+
+
+def parse_whole_number(value):
+    """Normalize ESPN decimal-formatted measurements for integer columns."""
+    if value is None or str(value).strip() in ("", "--", "-"):
+        return None
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return None
 
 
 def parse_made_attempts(value):
@@ -292,8 +327,7 @@ def upsert_player(cur, player):
             display_height,
             weight,
             experience,
-            headshot,
-            is_active
+            headshot
         ) VALUES (
             %(player_id)s,
             %(team_id)s,
@@ -307,8 +341,7 @@ def upsert_player(cur, player):
             %(display_height)s,
             %(weight)s,
             %(experience)s,
-            %(headshot)s,
-            %(is_active)s
+            %(headshot)s
         )
         ON CONFLICT (player_id) DO UPDATE SET
             team_id = EXCLUDED.team_id,
@@ -322,22 +355,20 @@ def upsert_player(cur, player):
             display_height = EXCLUDED.display_height,
             weight = EXCLUDED.weight,
             experience = EXCLUDED.experience,
-            headshot = EXCLUDED.headshot,
-            is_active = EXCLUDED.is_active;
+            headshot = EXCLUDED.headshot;
         """,
         player,
     )
 
 
-def upsert_team_roster(cur, team_id, player_id, season, is_active):
+def upsert_team_roster(cur, team_id, player_id, season, is_active=None):
     cur.execute(
         """
-        INSERT INTO team_rosters (team_id, player_id, season, is_active)
-        VALUES (%s, %s, %s, %s)
-        ON CONFLICT (team_id, player_id, season) DO UPDATE SET
-            is_active = EXCLUDED.is_active;
+        INSERT INTO team_rosters (team_id, player_id, season)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (team_id, player_id, season) DO NOTHING;
         """,
-        (team_id, player_id, season, is_active),
+        (team_id, player_id, season),
     )
 
 
@@ -517,12 +548,11 @@ def extract_player_fields(athlete, team_id):
         "short_name_abbr": athlete.get("abbreviatedName") or athlete.get("shortName"),
         "player_number": athlete.get("jersey"),
         "position": position.get("abbreviation") or position.get("name"),
-        "height": athlete.get("height"),
+        "height": parse_whole_number(athlete.get("height")),
         "display_height": athlete.get("displayHeight"),
-        "weight": athlete.get("weight"),
+        "weight": parse_whole_number(athlete.get("weight")),
         "experience": experience.get("displayValue") or experience.get("class"),
         "headshot": headshot.get("href"),
-        "is_active": athlete.get("active"),
     }
 
 
@@ -548,7 +578,13 @@ def run_roster(conn, season, sleep, timeout):
     with conn.cursor() as cur:
         roster_count = 0
         team_count = 0
-        for team_id in AVAILABLE_TEAMS:
+        try:
+            team_ids = discover_available_teams(timeout)
+            print(f"Discovered {len(team_ids)} teams in the configured conferences.")
+        except Exception as error:
+            team_ids = AVAILABLE_TEAMS
+            print(f"Conference discovery unavailable ({error}); using configured team fallback ({len(team_ids)} teams).")
+        for team_id in team_ids:
             url = f"{ESPN_BASE}/teams/{team_id}/roster"
             payload = fetch_json(url, timeout)
             team = get_team_from_roster_payload(payload)
@@ -718,7 +754,6 @@ def ensure_player_stub(cur, athlete, team_id):
         "weight": None,
         "experience": None,
         "headshot": None,
-        "is_active": None,
     }
     upsert_player(cur, player)
     return player_id
@@ -978,7 +1013,6 @@ def run_roster_supabase(client, season, sleep, timeout):
                 "team_id": team_fields["team_id"],
                 "player_id": player_fields["player_id"],
                 "season": season,
-                "is_active": player_fields.get("is_active"),
             })
             roster_count += 1
 

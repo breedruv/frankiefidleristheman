@@ -93,6 +93,10 @@ AVAILABLE_TEAMS = [
     2752,
 ]
 
+# ESPN group IDs for the six conferences in the draft pool. These are resolved
+# from each team's current `groups.id`; the static team list remains a fallback.
+AVAILABLE_CONFERENCE_GROUPS = {2, 4, 7, 8, 23, 50}
+
 ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball"
 
 DEFAULT_TIMEOUT = 30
