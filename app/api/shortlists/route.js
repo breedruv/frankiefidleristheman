@@ -1,7 +1,7 @@
 import { currentMember } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
 import { DRAFT_SEASON } from '../../../lib/draftRules.mjs';
-import { getDraftRosterPool } from '../../../lib/draftRoster';
+import { getDraftPool } from '../../../lib/queries';
 import { validateShortlist } from '../../../lib/shortlistRules.mjs';
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +21,7 @@ export async function PUT(request) {
   let body;
   try { body = await request.json(); } catch { return Response.json({ error: 'Invalid request.' }, { status: 400 }); }
   if (body.owner !== member) return Response.json({ error: 'You can edit only your own list.' }, { status: 403 });
-  const pool = new Set(getDraftRosterPool(10000).map((p) => p.player_id));
+  const pool = new Set((await getDraftPool(10000)).map((p) => Number(p.player_id)));
   let ids;
   try { ids = validateShortlist(member, body, pool); } catch (error) { return Response.json({ error: error.message }, { status: 400 }); }
   const { data, error } = await supabase.rpc('save_draft_shortlist', { p_season: DRAFT_SEASON, p_owner: member, p_players: ids, p_revision: body.revision });
