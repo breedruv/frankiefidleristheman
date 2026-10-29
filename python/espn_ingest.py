@@ -355,7 +355,7 @@ def upsert_player(cur, player):
             display_height = EXCLUDED.display_height,
             weight = EXCLUDED.weight,
             experience = EXCLUDED.experience,
-            headshot = EXCLUDED.headshot;
+            headshot = COALESCE(NULLIF(EXCLUDED.headshot, ''), players.headshot);
         """,
         player,
     )
@@ -1016,6 +1016,12 @@ def run_roster_supabase(client, season, sleep, timeout):
             })
             roster_count += 1
 
+        existing_photos = {
+            str(row["player_id"]): row.get("headshot")
+            for row in client.select_in("players", "player_id", [str(player["player_id"]) for player in players], "player_id,headshot")
+        }
+        for player in players:
+            player["headshot"] = player.get("headshot") or existing_photos.get(str(player["player_id"]))
         client.upsert("players", players, "player_id")
         client.upsert("team_rosters", roster_rows, "team_id,player_id,season")
 

@@ -63,6 +63,8 @@ Build a Next.js web app used by Andrew and Sam to draft for their shared fantasy
 - The franchise round consists of the first eight franchise slots, one per fantasy team. Blocks can complete slots out of order, so do not infer the active owner solely from the number of saved picks.
 - After the franchise round, snake-draft selections strictly follow the configured pick order.
 - The layout for current/next pick information is still being discussed; a compact strip or carousel redesign has not been approved.
+- The draft board is one live page. Do not show the 2026 Setup, Pick 40 Simulation, or 2025 History board views.
+- The pick carousel does not need a "Current pick" jump button for now.
 
 ### Franchise selection and blocking
 - Every player in the current season's pool is available for franchise selection. Previous-season ownership creates a possible blocking right, not a restriction on who can be selected.
@@ -84,16 +86,45 @@ Build a Next.js web app used by Andrew and Sam to draft for their shared fantasy
 - Each signed-in user can edit only their own list; the other user's list is visible but read-only. Enforce ownership on the server as well as in the UI.
 - Users should be able to add players while researching. Drafted players remain greyed out in their existing shortlist slots, count toward the ten-player limit, and must be manually removed. Do not automatically remove them, shift rankings, or backfill their slots when drafted.
 - Use Move up / Move down controls to manually reorder players without deleting and re-adding them. Do not automatically sort either list.
+- The Player Focus pool lets each browser choose visible columns while keeping Player visible. Shooting percentages use total makes divided by total attempts; show no percentage when a player has no attempts.
+- Player Focus PPG, MPG, shooting percentages, and last-five stats use each player's latest ESPN source season with recorded games. The ESPN season can differ from the fantasy draft year; make it available as an optional pool column.
 - Andrew confirmed Draft.csv is the correct end-of-2025 fantasy-roster ownership snapshot for the 2026 franchise round. Use it when 2025 fantasy_rosters has not been loaded; do not infer ownership from NCAA rosters.
 - ESPN 100 is a freshman-only ranking with one eligible ranking year per player; display its year with the ranking and do not treat it as a multi-year player history.
 - Previous-season PPG rank is the player's rank among all players available in that season's player pool, calculated from that season's PPG.
 - Draftable player pool is limited to teams in the AAC, ACC, Big East, Big Ten, Big 12, and SEC for the active season. Conference membership should come from the current ESPN team metadata so realignment changes eligibility without manually rewriting the pool.
 - ESPN's source season can be one year ahead of the fantasy draft label (for example, ESPN season 2027 represents the 2026 fantasy draft pool). Preserve the ESPN season value and keep the fantasy draft season as a separate application concept.
 - Season-specific player attributes such as class/year, position, height, weight, and team should be preserved by player and source season rather than overwriting the current player profile.
+- Reviewed school roster photos can fill missing ESPN headshots. Import them with `python/import_player_photos.py`; a future ESPN roster sync should preserve the school photo when ESPN has no headshot and replace it when ESPN supplies one.
+
+### Exhibition game collection
+- The manual exhibition source workbook is `College-Basketball-Exhibition-Box-Scores-2026(1).xlsx`; imported exhibition games use `games.is_exhibition = true` and retain workbook IDs such as `G01` in `games.source_game_label`.
+- Exhibition collection is separate from the ESPN schedule/stat pipeline. Only games explicitly identified as exhibitions are eligible; skip regular-season games so ESPN remains responsible for those.
+- Hoops HD's 2026-27 open-exhibition page is the schedule source of truth. Filter for games involving `AVAILABLE_TEAMS`; unresolved ESPN name matches need human review. Use the linked official college box score when available, and do not import stats until a complete box score is published.
+- Prefer linked official box-score PDFs for exhibition stat collection. If a PDF is unavailable or unsupported, allow stats to be entered manually in the workbook's `Player stats` sheet; inspect school HTML box-score formats as a fallback, with LSU's format still to be reviewed.
+- Initial collection must use a review/approval step before database writes. Capture the official source URL and leave unreported stats blank.
+- Match players using jersey number and team as the initial signal, then compare names. Flag substantially different names, ambiguous matches, and unresolved player IDs for human review; do not automatically attach stats based on number alone.
+- ESPN remains the primary player identity system. A player absent from ESPN must use the separately agreed special handling process rather than receiving a guessed ESPN ID. Workbook-supplied team IDs may reflect team affiliation more accurately than ESPN's current roster assignment for exhibition stats.
+- Exhibition game rows are marked and displayed with an “(Exhibition)” label; they must remain distinguishable from regular-season stats.
+
+### Exhibition PDF parser implementation reference
+- Run `python/parse_exhibition_pdfs.py` to create `exhibition-pdf-import-review.csv`; it does not write to the database.
+- The review carries `source_game_label`, game date, ESPN source season, exhibition flag, game scores, source URL, extracted stats, and local PDF path. Resolve `source_game_label` to the database game row during a future import.
+- Fill `player_id` and `team_id` only when both jersey and normalized player name match the ESPN roster. Jersey-only/name-only suggestions stay in candidate columns for human review. Duplicate source rows are flagged and withheld from import IDs.
+- Preserve PDF player-stat section boundaries and original page numbers; assign each section to a workbook team only when player point totals match that team's final score. Match against that team's ESPN roster only, and include source team name/ID plus per-team point validation in the review CSV. Unassigned sections stay unresolved.
+- Compare parsed player-point totals with each game's final score; if totals differ, withhold otherwise exact IDs and flag the whole game for review.
+- `--update-links` repairs workbook `Local PDF` links from game-ID and matchup-matched local PDF filenames. `--game G## --append` supports targeted updates when a PDF is added later.
+- Parse final box-score pages only. Half-by-half-only PDFs and unsupported layouts stay in review; no stats are silently imported.
 
 ### Project reference maintenance
 - Record confirmed product decisions and league rules in this AGENTS.md as discussions progress.
 - Distinguish confirmed requirements from suggestions and unresolved questions. These requirements describe intended behavior, not proof that it is implemented.
+
+### Codex agent and GitHub workflow
+- Project-scoped agents are defined in `.codex/agents/`: `frontend_specialist` owns scoped UI implementation; `backend_architect` provides read-only API/data architecture review; `qa_security_critic` provides read-only correctness, security, and test review.
+- The main Codex agent remains responsible for requirements, assigning one implementation owner per overlapping files, reconciling reviews, running final checks, and reporting the outcome. Delegate independent exploration, design review, or verification; avoid parallel writes to shared files.
+- Use the installed `agent-skills` workflows for planning, implementation, testing, and review, and `ponytail` to keep changes minimal. Apply the specific skill that fits the task rather than invoking every workflow on every change.
+- The web app is `breedruv/frankiefidleristheman`; `College-Basketball` is a separate repository for projection/model work. Keep issue/PR planning and changes in the owning repository, and do not edit or commit the other repository unless the task explicitly crosses that boundary.
+- GitHub Issues and pull requests are available for planning and review. GitHub Actions is not configured in this repository yet; do not describe checks as CI-enforced until a workflow is added.
 
 ### Draft workspace implementation reference
 - Account allowlist: server-only `ANDREW_EMAIL` and `SAM_EMAIL`; verified Supabase magic-link sessions (user chose email links instead of passwords). No public registration. Email template: `docs/magic-link-email.html`; confirmation handler: `/auth/confirm`.
