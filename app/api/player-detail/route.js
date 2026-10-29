@@ -1,5 +1,6 @@
 import { getPlayerGameLog } from "../../../lib/queries";
 import { hasSupabase, supabase } from "../../../lib/supabase";
+import { resolveGameOpponent } from "../../../lib/gameOpponent.mjs";
 
 export const dynamic = "force-dynamic";
 
@@ -9,13 +10,16 @@ export async function GET(request) {
   let games = await getPlayerGameLog(playerId, 5);
   if (hasSupabase && supabase && games.length) {
     const gameIds = games.map((game) => Number(game.game_id));
-    const { data: shooting } = await supabase.from("player_games").select("game_id,ftm,fta").eq("player_id", playerId).in("game_id", gameIds);
+    const [{ data: shooting }, { data: matchups }, directory] = await Promise.all([
+      supabase.from("player_games").select("game_id,ftm,fta").eq("player_id", playerId).in("game_id", gameIds),
+      supabase.from("games").select("game_id,home_team_id,away_team_id,home_team_name,away_team_name").in("game_id", gameIds),
+      fetch("https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams?limit=500", { next: { revalidate: 86400 } })
+        .then((response) => response.ok ? response.json() : null).catch(() => null)
+    ]);
     const shootingByGame = new Map((shooting || []).map((row) => [Number(row.game_id), row]));
-    games = games.map((game) => ({ ...game, ...(shootingByGame.get(Number(game.game_id)) || {}) }));
-    const opponentIds = [...new Set(games.map((game) => Number(game.opponent_id)).filter(Number.isInteger))];
-    const { data: teams } = await supabase.from("teams").select("team_id,logo_url").in("team_id", opponentIds);
-    const logos = new Map((teams || []).map((team) => [Number(team.team_id), team.logo_url]));
-    games = games.map((game) => ({ ...game, opponent_logo: logos.get(Number(game.opponent_id)) || `https://a.espncdn.com/i/teamlogos/ncaa/500/${game.opponent_id}.png` }));
+    const matchupByGame = new Map((matchups || []).map((row) => [Number(row.game_id), row]));
+    const teams = directory?.sports?.[0]?.leagues?.[0]?.teams?.map((entry) => entry.team) || [];
+    games = games.map((game) => resolveGameOpponent({ ...game, ...(shootingByGame.get(Number(game.game_id)) || {}) }, matchupByGame.get(Number(game.game_id)), teams));
   }
   return Response.json({ games });
 }
