@@ -65,6 +65,8 @@ Build a Next.js web app used by Andrew and Sam to draft for their shared fantasy
 - The layout for current/next pick information is still being discussed; a compact strip or carousel redesign has not been approved.
 - The draft board is one live page. Do not show the 2026 Setup, Pick 40 Simulation, or 2025 History board views.
 - The pick carousel does not need a "Current pick" jump button for now.
+- Clicking the current pick in the carousel or draft board should expand player search directly beneath that pick. Future slots are display only.
+- The carousel and board should share draft state refreshes instead of polling the same endpoints independently.
 
 ### Franchise selection and blocking
 - Every player in the current season's pool is available for franchise selection. Previous-season ownership creates a possible blocking right, not a restriction on who can be selected.

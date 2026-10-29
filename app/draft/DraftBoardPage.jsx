@@ -1,7 +1,6 @@
 import { getDraftPool } from "../../lib/queries";
 import DraftCountdown from "../components/DraftCountdown";
-import DraftBoardLayout from "../components/DraftBoardLayout";
-import DraftPickEntry from "../components/DraftPickEntry";
+import DraftWorkspace from "../components/DraftWorkspace";
 import { currentMember } from "../../lib/auth";
 
 const formatNumber = (value, digits = 1) => {
@@ -11,7 +10,7 @@ const formatNumber = (value, digits = 1) => {
   return Number(value).toFixed(digits);
 };
 
-export default async function DraftBoardPage({ searchParams, history, season = "2026" }) {
+export default async function DraftBoardPage({ searchParams }) {
   const member = await currentMember();
   const publicOnly = process.env.PRE_DRAFT_PRIVATE === "true" && !member;
   const params = await searchParams || {};
@@ -31,9 +30,7 @@ export default async function DraftBoardPage({ searchParams, history, season = "
     <div className="page draft-board-page">
       {!publicOnly && <div className="draft-subnav"><a className="active" href="/draft/board">Draft Board</a><a href="/draft/players">Player Focus</a><a href="/admin/draft">Draft setup</a></div>}
       <DraftCountdown />
-      <div className="draft-season-nav"><span>Board view</span><a className={season === "2026" ? "active" : ""} href="/draft/board?season=2026">2026 Setup</a><a className={season === "demo" ? "active" : ""} href="/draft/board?season=demo&limit=40">Pick 40 Simulation</a><a className={season === "2025" ? "active" : ""} href="/draft/board?season=2025">2025 History</a></div>
-      {season === "2026" ? <DraftPickEntry readOnly={!member} /> : <DraftPickEntry history={history} readOnly />}
-      <DraftBoardLayout history={history} readOnly={!member} />
+      <DraftWorkspace readOnly={!member} />
       {!publicOnly && <><section className="section">
         <div className="section-title">
           <h2>Draft Prep Board</h2>

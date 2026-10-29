@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
-import { draftOrders, nextPick } from "../../lib/draftRules.mjs";
+import { nextPick } from "../../lib/draftRules.mjs";
 
 const defaultTeams = ["MB", "AS", "SL", "DD", "Len", "Brandon", "John B", "BJ"];
 const rounds = ["Franchise Round", ...Array.from({ length: 17 }, (_, index) => `Round ${index + 1}`)];
@@ -66,37 +66,15 @@ function EditPickCell({ roundNumber, player }) {
   </div>;
 }
 
-export default function DraftBoardLayout({ history, readOnly = false }) {
+export default function DraftBoardLayout({ history, readOnly = false, picks = [], orders = { snake: defaultTeams, franchise: defaultTeams }, openPicker = null, onOpenPicker, picker, canPick = true }) {
   const [view, setView] = useState("draft");
-  const [savedPicks, setSavedPicks] = useState([]);
-  const [teams, setTeams] = useState(defaultTeams); const [franchiseTeams, setFranchiseTeams] = useState(defaultTeams);
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const response = await fetch('/api/draft-config');
-        if (!response.ok) return;
-        const data = await response.json();
-        const order = draftOrders(data.snakeOrder);
-        if (!cancelled) { setTeams(order.snake); setFranchiseTeams(order.franchise); }
-        if (!history) {
-          const picksResponse = await fetch('/api/draft-picks');
-          if (!picksResponse.ok) return;
-          const picksData = await picksResponse.json();
-          if (!cancelled) setSavedPicks(picksData.picks);
-        }
-      } catch { /* Preserve the last confirmed board on a temporary connection failure. */ }
-    }
-    load();
-    const timer = setInterval(load, 5000);
-    window.addEventListener('draft-pick-saved', load);
-    return () => { cancelled = true; clearInterval(timer); window.removeEventListener('draft-pick-saved', load); };
-  }, [history]);
-  const currentHistory = (history ? [] : savedPicks).reduce((map, pick) => { map[`${pick.round_number}-${pick.team_code}`] = { name: pick.player_name, position: pick.drafted_position, college: pick.college_team_name, playerId: pick.player_id, pickNumber: pick.pick_number, blockedTeam: pick.blocked_team_code }; return map; }, { ...history?.draftSlots });
-  const currentRoster = (history ? [] : savedPicks).reduce((map, pick) => { const group = pick.drafted_position; const key = `${pick.team_code}-${group}`; const slot = map[key] || 0; map[`${group}-${pick.team_code}-${slot}`] = { name: pick.player_name, position: pick.drafted_position, college: pick.college_team_name, playerId: pick.player_id, pickNumber: pick.pick_number, blockedTeam: pick.blocked_team_code }; map[key] = slot + 1; return map; }, { ...history?.rosterSlots });
+  const teams = orders.snake;
+  const franchiseTeams = orders.franchise;
+  const currentHistory = (history ? [] : picks).reduce((map, pick) => { map[`${pick.round_number}-${pick.team_code}`] = { name: pick.player_name, position: pick.drafted_position, college: pick.college_team_name, playerId: pick.player_id, pickNumber: pick.pick_number, blockedTeam: pick.blocked_team_code }; return map; }, { ...history?.draftSlots });
+  const currentRoster = (history ? [] : picks).reduce((map, pick) => { const group = pick.drafted_position; const key = `${pick.team_code}-${group}`; const slot = map[key] || 0; map[`${group}-${pick.team_code}-${slot}`] = { name: pick.player_name, position: pick.drafted_position, college: pick.college_team_name, playerId: pick.player_id, pickNumber: pick.pick_number, blockedTeam: pick.blocked_team_code }; map[key] = slot + 1; return map; }, { ...history?.rosterSlots });
   const teamCounts = teams.reduce((all, team) => { all[team] = { coreTotal: 0, C: 0, F: 0, G: 0, SUP: 0 }; return all; }, {});
   Object.entries(currentHistory).forEach(([key, player]) => { const [round, team] = key.split("-"); if (!teamCounts[team]) return; if (Number(round) <= 12) teamCounts[team].coreTotal += 1; const group = player.position; if (teamCounts[team][group] !== undefined) teamCounts[team][group] += 1; });
-  const next = nextPick(savedPicks, teams, franchiseTeams);
+  const next = nextPick(picks, teams, franchiseTeams);
   return (
     <section className="draft-board-section">
       <div className="draft-board-heading">
@@ -110,21 +88,27 @@ export default function DraftBoardLayout({ history, readOnly = false }) {
         {view === "draft" ? <div className="draft-board-grid" style={{ "--draft-team-count": teams.length }}>
           <div className="draft-board-corner">Round</div>
           {teams.map((team, index) => <TeamHeader key={team} team={team} index={index} counts={teamCounts[team]} />)}
-          {rounds.map((round) => <div className="draft-board-row" key={round}>
-            <div className={`draft-board-round ${round === "Franchise Round" ? "is-franchise" : ""}`}><strong>{round === "Franchise Round" ? "FR" : round.replace("Round ", "R")}</strong><span>{round}</span></div>
-            {teams.map((team) => {
-              const player = currentHistory[`${rounds.indexOf(round)}-${team}`];
-              const roundNumber = rounds.indexOf(round);
-              const status = !history && next?.roundNumber === roundNumber && next?.teamCode === team ? "is-on-clock" : "";
-              const actionable = !player && !!status;
-              return <div className={`draft-board-cell ${actionable ? "is-open-pick" : ""} ${status}`} key={`${round}-${team}`}>
-                {player ? history || readOnly ? <PlayerCard player={player} /> : <EditPickCell roundNumber={roundNumber} teamCode={team} player={player} teamOrder={teams} franchiseTeams={franchiseTeams} />
-                  : actionable ? readOnly ? <Link href="/login" className="draft-open-pick-button draft-edit-cell" aria-label={`Sign in to select player for ${team}, pick ${next.pickNumber}`}><PlayerCard player={null} emptyLabel="Select player" /></Link>
-                    : <button type="button" className="draft-open-pick-button draft-edit-cell" aria-label={`Select player for ${team}, pick ${next.pickNumber}`} aria-controls="draft-player-search" onClick={() => document.getElementById("draft-player-search")?.focus()}><PlayerCard player={null} emptyLabel="Select player" /></button>
-                  : <PlayerCard player={null} emptyLabel="Upcoming" />}
-              </div>;
-            })}
-          </div>)}
+          {rounds.map((round) => {
+            const roundNumber = rounds.indexOf(round);
+            const activeRound = openPicker === "board" && next?.roundNumber === roundNumber;
+            return <Fragment key={round}>
+              <div className="draft-board-row">
+                <div className={`draft-board-round ${round === "Franchise Round" ? "is-franchise" : ""}`}><strong>{round === "Franchise Round" ? "FR" : round.replace("Round ", "R")}</strong><span>{round}</span></div>
+                {teams.map((team) => {
+                  const player = currentHistory[`${roundNumber}-${team}`];
+                  const status = !history && next?.roundNumber === roundNumber && next?.teamCode === team ? "is-on-clock" : "";
+                  const actionable = !player && !!status;
+                  return <div className={`draft-board-cell ${actionable ? "is-open-pick" : ""} ${status}`} key={`${round}-${team}`}>
+                    {player ? history || readOnly ? <PlayerCard player={player} /> : <EditPickCell roundNumber={roundNumber} teamCode={team} player={player} teamOrder={teams} franchiseTeams={franchiseTeams} />
+                      : actionable ? readOnly ? <Link href="/login" className="draft-open-pick-button draft-edit-cell" aria-label={`Sign in to select player for ${team}, pick ${next.pickNumber}`}><PlayerCard player={null} emptyLabel="Select player" /></Link>
+                        : <button id="draft-board-current-pick" type="button" className="draft-open-pick-button draft-edit-cell" aria-expanded={openPicker === "board"} aria-controls="draft-player-search" aria-label={`Select player for ${team}, pick ${next.pickNumber}`} disabled={!canPick} onClick={() => onOpenPicker("board")}><PlayerCard player={null} emptyLabel={!canPick ? "Draft unavailable" : openPicker === "board" ? "Search below" : "Select player"} /></button>
+                      : <PlayerCard player={null} emptyLabel="Upcoming" />}
+                  </div>;
+                })}
+              </div>
+              {activeRound && <div className="draft-board-picker-row" style={{ "--picker-align": teams.indexOf(next.teamCode) < 3 ? "start" : teams.indexOf(next.teamCode) > 4 ? "end" : "center" }}><strong>Pick {next.pickNumber} · {next.teamCode}</strong>{picker}</div>}
+            </Fragment>;
+          })}
         </div> : <div className="draft-board-grid roster-board-grid" style={{ "--draft-team-count": teams.length }}>
           <div className="draft-board-corner">Roster</div>
           {teams.map((team, index) => <TeamHeader key={team} team={team} index={index} counts={teamCounts[team]} />)}
