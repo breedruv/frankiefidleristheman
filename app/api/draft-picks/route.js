@@ -26,7 +26,7 @@ async function mutate(request, action) {
       if (number !== picks.length) throw new Error('Undo later picks first to preserve draft order and blocking rights.');
       pick = existing;
     } else {
-      const player = searchDraftRoster('', Number(body.playerId)).find((p) => p.position === body.draftedPosition);
+      const player = (await searchDraftRoster('', Number(body.playerId))).find((p) => p.position === body.draftedPosition);
       if (!player) throw new Error('Choose a player and eligible position from the current pool.');
       if (action === 'PATCH' && !existing) throw new Error('Pick not found.');
       const next = action === 'POST' ? nextPick(picks, snake, franchise) : null;
