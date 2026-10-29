@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { draftOrders, nextPick } from "../../lib/draftRules.mjs";
 
 const defaultTeams = ["MB", "AS", "SL", "DD", "Len", "Brandon", "John B", "BJ"];
@@ -11,8 +12,8 @@ const rosterGroups = [
   { label: "Guards", short: "G", count: 5, className: "guard" }
 ];
 
-function PlayerCard({ player, supplemental = false }) {
-  if (!player) return <div className="draft-player-card draft-player-card-empty"><div className="draft-player-avatar">+</div><div><strong>Open pick</strong><span>{supplemental ? "Any position" : "Player slot"}</span></div></div>;
+function PlayerCard({ player, supplemental = false, emptyLabel = "Open pick" }) {
+  if (!player) return <div className="draft-player-card draft-player-card-empty"><div className="draft-player-avatar">+</div><div><strong>{emptyLabel}</strong><span>{supplemental ? "Any position" : "Player slot"}</span></div></div>;
   const headshot = player.playerId ? `https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/${player.playerId}.png` : null;
   return <div className={`draft-player-card draft-player-card-filled position-${String(player.position || "").toLowerCase()}`}><div className="draft-player-avatar">{headshot ? <img src={headshot} alt="" /> : "?"}</div><div><strong>{player.name}</strong><span>{player.position} · {player.college}</span></div></div>;
 }
@@ -111,14 +112,25 @@ export default function DraftBoardLayout({ history, readOnly = false }) {
           {teams.map((team, index) => <TeamHeader key={team} team={team} index={index} counts={teamCounts[team]} />)}
           {rounds.map((round) => <div className="draft-board-row" key={round}>
             <div className={`draft-board-round ${round === "Franchise Round" ? "is-franchise" : ""}`}><strong>{round === "Franchise Round" ? "FR" : round.replace("Round ", "R")}</strong><span>{round}</span></div>
-            {teams.map((team) => { const player = currentHistory[`${rounds.indexOf(round)}-${team}`]; const roundNumber = rounds.indexOf(round); const status = !history && next?.roundNumber === roundNumber && next?.teamCode === team ? "is-on-clock" : ""; return <div className={`draft-board-cell ${!player ? "is-open-pick" : ""} ${status}`} key={`${round}-${team}`}>{player ? history || readOnly ? <PlayerCard player={player} /> : <EditPickCell roundNumber={roundNumber} teamCode={team} player={player} teamOrder={teams} franchiseTeams={franchiseTeams} /> : <PlayerCard player={null} />}</div>; })}
+            {teams.map((team) => {
+              const player = currentHistory[`${rounds.indexOf(round)}-${team}`];
+              const roundNumber = rounds.indexOf(round);
+              const status = !history && next?.roundNumber === roundNumber && next?.teamCode === team ? "is-on-clock" : "";
+              const actionable = !player && !!status;
+              return <div className={`draft-board-cell ${actionable ? "is-open-pick" : ""} ${status}`} key={`${round}-${team}`}>
+                {player ? history || readOnly ? <PlayerCard player={player} /> : <EditPickCell roundNumber={roundNumber} teamCode={team} player={player} teamOrder={teams} franchiseTeams={franchiseTeams} />
+                  : actionable ? readOnly ? <Link href="/login" className="draft-open-pick-button draft-edit-cell" aria-label={`Sign in to select player for ${team}, pick ${next.pickNumber}`}><PlayerCard player={null} emptyLabel="Select player" /></Link>
+                    : <button type="button" className="draft-open-pick-button draft-edit-cell" aria-label={`Select player for ${team}, pick ${next.pickNumber}`} aria-controls="draft-player-search" onClick={() => document.getElementById("draft-player-search")?.focus()}><PlayerCard player={null} emptyLabel="Select player" /></button>
+                  : <PlayerCard player={null} emptyLabel="Upcoming" />}
+              </div>;
+            })}
           </div>)}
         </div> : <div className="draft-board-grid roster-board-grid" style={{ "--draft-team-count": teams.length }}>
           <div className="draft-board-corner">Roster</div>
           {teams.map((team, index) => <TeamHeader key={team} team={team} index={index} counts={teamCounts[team]} />)}
           {rosterGroups.map((group) => Array.from({ length: group.count }, (_, index) => <div className={`draft-board-row ${index === 0 ? "roster-row-start" : ""}`} key={`${group.short}-${index}`}>
             <div className={`draft-board-round roster-group-${group.className}`}><strong>{group.short}</strong><span>{group.label} {index + 1}</span></div>
-            {teams.map((team) => { const player = currentRoster[`${group.short}-${team}-${index}`]; return <div className={`draft-board-cell roster-cell-${group.className}`} key={`${group.short}-${index}-${team}`}><PlayerCard supplemental={false} player={player} /></div>; })}
+            {teams.map((team) => { const player = currentRoster[`${group.short}-${team}-${index}`]; return <div className={`draft-board-cell roster-cell-${group.className}`} key={`${group.short}-${index}-${team}`}><PlayerCard supplemental={false} player={player} emptyLabel="Empty slot" /></div>; })}
           </div>))}
         </div>}
       </div>
