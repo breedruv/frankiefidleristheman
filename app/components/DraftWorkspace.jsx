@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { DEFAULT_TEAMS, draftOrders, nextPick } from "../../lib/draftRules.mjs";
 import DraftBoardLayout from "./DraftBoardLayout";
 import DraftPickEntry, { DraftPlayerPicker } from "./DraftPickEntry";
+import DraftBoardResearch from "./DraftBoardResearch";
 
 export default function DraftWorkspace({ readOnly = false }) {
   const [picks, setPicks] = useState([]);
@@ -19,6 +20,9 @@ export default function DraftWorkspace({ readOnly = false }) {
   const [submitError, setSubmitError] = useState("");
   const [loadError, setLoadError] = useState("");
   const [ready, setReady] = useState(false);
+  const [research, setResearch] = useState(null);
+  const [researchError, setResearchError] = useState("");
+  const [researchRefresh, setResearchRefresh] = useState(0);
   const next = nextPick(picks, orders.snake, orders.franchise);
 
   useEffect(() => {
@@ -82,6 +86,26 @@ export default function DraftWorkspace({ readOnly = false }) {
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, []);
+
+  useEffect(() => {
+    if (readOnly) return;
+    const controller = new AbortController();
+    fetch("/api/draft-board-research", { signal: controller.signal }).then(async (response) => {
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      if (!Array.isArray(data.players) || !Array.isArray(data.lists)) throw new Error("Invalid draft research response.");
+      setResearch(data);
+      setResearchError("");
+    }).catch((error) => { if (error.name !== "AbortError") setResearchError(error.message || "Unable to refresh draft research."); });
+    return () => controller.abort();
+  }, [readOnly, researchRefresh]);
+
+  useEffect(() => {
+    if (readOnly) return;
+    const onVisible = () => { if (document.visibilityState === "visible") setResearchRefresh((value) => value + 1); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [readOnly]);
 
   useEffect(() => {
     if (readOnly || !openPicker || !query.trim()) {
@@ -188,6 +212,7 @@ export default function DraftWorkspace({ readOnly = false }) {
     {!ready ? <p>Loading draft...</p> : <>
       <DraftPickEntry picks={picks} orders={orders} readOnly={readOnly} openPicker={openPicker} onOpenPicker={openAt} picker={openPicker === "carousel" ? picker : null} message={message} canPick={!loadError} />
       <DraftBoardLayout picks={picks} orders={orders} readOnly={readOnly} openPicker={openPicker} onOpenPicker={openAt} picker={openPicker === "board" ? picker : null} canPick={!loadError} />
+      {!readOnly && <DraftBoardResearch research={research} picks={picks} teams={orders.franchise} error={researchError} onRefresh={() => setResearchRefresh((value) => value + 1)} />}
     </>}
   </>;
 }

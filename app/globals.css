@@ -1301,3 +1301,32 @@ main { padding: 2rem 4vw 3.5rem; }
 .draft-board-page .draft-pick-timeline-card { min-height:105px; }
 .draft-board-page { gap:1rem; }
 .draft-edit-cell { background:transparent; border:0; padding:0; color:inherit; font:inherit; }
+.draft-pick-timeline-anchor { position:relative; display:grid; flex:0 0 145px; align-content:start; gap:.35rem; min-width:0; }
+.draft-pick-timeline-anchor.is-current { flex-basis:300px; z-index:40; }
+.draft-pick-timeline-anchor > .draft-pick-timeline-card { width:100%; min-width:0; }
+.draft-inline-picker { width:min(320px, calc(100vw - 32px)); margin:0; padding:.55rem; gap:.35rem; border-color:#31586b; box-shadow:0 14px 34px rgba(0,0,0,.38); }
+.draft-inline-picker .draft-search-results { max-height:190px; }
+.draft-selection-review { display:grid; gap:.4rem; margin-top:.15rem; }
+.draft-selected-player { display:flex; justify-content:space-between; gap:.5rem; padding:.5rem .6rem; }
+.draft-selected-player strong { font-size:.75rem; }
+.draft-selected-player small { margin:0; text-align:right; }
+.draft-block-decision { display:grid; grid-template-columns:1fr 1.4fr; gap:.35rem; }
+.draft-block-decision button, .draft-selection-review > .solid-pill { min-width:0; padding:.45rem .5rem; font-size:.66rem; }
+.draft-board-cell.has-open-picker { position:relative; z-index:40; overflow:visible; }
+.draft-board-picker-anchor { position:absolute; top:calc(100% + .15rem); left:0; z-index:50; width:min(320px, calc(100vw - 32px)); text-align:left; }
+.draft-board-picker-anchor.align-right { right:0; left:auto; }
+.draft-board-picker-anchor > strong { display:block; margin-bottom:.25rem; color:var(--accent-2); font-size:.68rem; }
+.draft-board-picker-anchor .draft-inline-picker { width:100%; }
+.draft-board-scroll.has-picker { padding-bottom:390px; }
+@media(max-width:600px) { .draft-block-decision { grid-template-columns:1fr; } }
+.draft-research-section { display:grid; gap:.85rem; margin-top:.9rem; }
+.draft-research-lists, .draft-franchise-groups { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.65rem; align-items:start; }
+.draft-research-lists > *, .draft-franchise-team { min-width:0; padding:.7rem; border:1px solid var(--border); border-radius:10px; background:#10222f; }
+.draft-research-section h2, .draft-research-section h3 { margin:0 0 .45rem; font-size:.9rem; }
+.draft-research-section ol, .draft-research-section ul { display:grid; gap:.25rem; margin:.35rem 0 0; padding-left:1.25rem; }
+.draft-research-section li, .draft-research-section p { font-size:.72rem; }
+.draft-franchise-summary { display:flex; justify-content:space-between; gap:.5rem; align-items:baseline; margin-bottom:.4rem; font-size:.75rem; font-weight:700; }
+.draft-franchise-team table { width:100%; font-size:.68rem; }
+.draft-franchise-team th, .draft-franchise-team td { padding:.3rem .35rem; }
+.draft-franchise-muted { color:var(--muted); opacity:.65; }
+@media(max-width:700px) { .draft-research-lists, .draft-franchise-groups { grid-template-columns:1fr; } }

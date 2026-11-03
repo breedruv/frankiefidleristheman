@@ -12,7 +12,7 @@ export function DraftPlayerPicker({ pickNumber, teamCode, roundNumber, query, on
     {query.trim() && searching && !selected && <small>Searching players...</small>}
     {query.trim() && !searching && !results.length && !searchError && !selected && <small>No matching players.</small>}
     {results.length > 0 && !selected && <div className="draft-search-results">{results.map((player) => <button type="button" disabled={player.drafted} key={`${player.playerId}-${player.position}`} onClick={() => onSelect(player)}><span><strong>{player.name}</strong><small>{player.college} / {player.position}{player.drafted ? " / Drafted" : ""}{player.blockingOwner ? ` / ${player.blockingOwner} can retain` : " / Unrestricted"}</small></span></button>)}</div>}
-    {selected && <div className="draft-selection-review"><div><strong>{selected.name}</strong><small>{selected.college} / Draft as {selected.position}</small></div><button type="button" className="solid-pill" disabled={saving || !!loadError} onClick={() => onSubmit(false)}>{saving ? "Saving..." : blocker ? "Allow selection" : "Submit pick"}</button>{blocker && <button type="button" className="ghost-pill" disabled={saving || !!loadError} onClick={() => onSubmit(true)}>{blocker} blocks and retains</button>}</div>}
+    {selected && <div className="draft-selection-review"><div className="draft-selected-player"><strong>{selected.name}</strong><small>{selected.college} / {selected.position}</small></div>{blocker ? <div className="draft-block-decision" role="group" aria-label="Franchise pick decision"><button type="button" className="solid-pill" disabled={saving || !!loadError} onClick={() => onSubmit(false)}>{saving ? "Saving..." : "Allowed"}</button><button type="button" className="ghost-pill" disabled={saving || !!loadError} onClick={() => onSubmit(true)}>{saving ? "Saving..." : `Blocked · ${blocker} gets the pick`}</button></div> : <button type="button" className="solid-pill" disabled={saving || !!loadError} onClick={() => onSubmit(false)}>{saving ? "Saving..." : "Submit pick"}</button>}</div>}
     {submitError && <p role="alert">{submitError}</p>}
   </div>;
 }
@@ -39,12 +39,14 @@ export default function DraftPickEntry({ history = null, picks = [], orders = { 
       const current = item.current && !item.player && !history;
       const Card = current ? readOnly ? Link : "button" : "div";
       const action = current ? readOnly ? { href: "/login" } : { type: "button", disabled: !canPick, "aria-expanded": openPicker === "carousel", "aria-controls": "draft-player-search", onClick: togglePicker } : {};
-      return <Card {...action} id={current ? "draft-carousel-current-pick" : undefined} className={`draft-pick-timeline-card ${current ? "is-current" : ""} ${item.player ? "is-complete" : "is-open"}`} key={item.pickNumber}>
-        <span>Pick {item.pickNumber}{current ? " - On the clock" : ""}</span><strong>{item.teamCode}</strong><small>{item.roundNumber === 0 ? "Franchise round" : `Round ${item.roundNumber}`}</small>
-        {item.player ? <><div className="draft-pick-timeline-player"><b>{item.player.player_name}</b></div><em>{item.player.drafted_position}</em>{item.player.blocked_team_code && <span className="draft-block-label">Blocked {item.player.blocked_team_code}</span>}</> : current ? <b>{readOnly ? "Sign in to select" : !canPick ? "Draft unavailable" : retrying ? "Choosing again · Search players" : "Choose player"}</b> : <b>Up next</b>}
-      </Card>;
+      return <div className={`draft-pick-timeline-anchor ${current ? "is-current" : ""}`} key={item.pickNumber}>
+        <Card {...action} id={current ? "draft-carousel-current-pick" : undefined} className={`draft-pick-timeline-card ${current ? "is-current" : ""} ${item.player ? "is-complete" : "is-open"}`}>
+          <span>Pick {item.pickNumber}{current ? " - On the clock" : ""}</span><strong>{item.teamCode}</strong><small>{item.roundNumber === 0 ? "Franchise round" : `Round ${item.roundNumber}`}</small>
+          {item.player ? <><div className="draft-pick-timeline-player"><b>{item.player.player_name}</b></div><em>{item.player.drafted_position}</em>{item.player.blocked_team_code && <span className="draft-block-label">Blocked {item.player.blocked_team_code}</span>}</> : current ? <b>{readOnly ? "Sign in to select" : !canPick ? "Draft unavailable" : retrying ? "Choosing again · Search players" : "Choose player"}</b> : <b>Up next</b>}
+        </Card>
+        {current && openPicker === "carousel" && picker}
+      </div>;
     })}</div>
-    {!readOnly && next && openPicker === "carousel" && picker}
     {!next && !history && <p>Draft complete. All franchise and snake selections are recorded.</p>}
     {message && <p role="status" className="draft-pick-message">{message}</p>}
   </section>;

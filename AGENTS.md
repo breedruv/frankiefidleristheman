@@ -67,6 +67,9 @@ Build a Next.js web app used by Andrew and Sam to draft for their shared fantasy
 - The pick carousel does not need a "Current pick" jump button for now.
 - Clicking the current pick in the carousel or draft board should expand player search directly beneath that pick. Future slots are display only.
 - The carousel and board should share draft state refreshes instead of polling the same endpoints independently.
+- Keep the draft board page focused on the board, a compact read-only view of both personal top 10 lists, and a private franchise reference; player-pool filters and the full research table belong in Player Focus.
+- The active pick opens a compact search anchored to its carousel card or board cell. After a blockable franchise player is selected, show Allowed and Blocked choices beneath that player; a block awards the player to the previous owner and leaves the initiating team on the clock.
+- The franchise reference groups previous-roster players by fantasy owner, shows current player stats, and updates drafted or unrestricted status as picks are recorded. Only players in the current draftable pool are labeled franchiseable.
 
 ### Franchise selection and blocking
 - Every player in the current season's pool is available for franchise selection. Previous-season ownership creates a possible blocking right, not a restriction on who can be selected.
@@ -84,7 +87,7 @@ Build a Next.js web app used by Andrew and Sam to draft for their shared fantasy
 
 ### Personal top 10 lists
 - Provide separate Andrew and Sam top 10 lists, managed through their individual sign-ins.
-- Both lists must be easily visible at the same time within the private Player Focus board alongside player research. Do not place either list on the draft board.
+- Both lists must be easily visible at the same time within the private Player Focus board alongside player research. Show a compact read-only view of both lists on the draft board for signed-in Andrew and Sam; list editing remains in Player Focus.
 - Each signed-in user can edit only their own list; the other user's list is visible but read-only. Enforce ownership on the server as well as in the UI.
 - Users should be able to add players while researching. Drafted players remain greyed out in their existing shortlist slots, count toward the ten-player limit, and must be manually removed. Do not automatically remove them, shift rankings, or backfill their slots when drafted.
 - Use Move up / Move down controls to manually reorder players without deleting and re-adding them. Do not automatically sort either list.

@@ -84,29 +84,28 @@ export default function DraftBoardLayout({ history, readOnly = false, picks = []
         </div>
         <div className="draft-board-toggle"><button type="button" className={view === "draft" ? "active" : ""} onClick={() => setView("draft")}>Draft view</button><button type="button" className={view === "roster" ? "active" : ""} onClick={() => setView("roster")}>Roster view</button></div>
       </div>
-      <div className="draft-board-scroll">
+      <div className={`draft-board-scroll ${openPicker === "board" ? "has-picker" : ""}`}>
         {view === "draft" ? <div className="draft-board-grid" style={{ "--draft-team-count": teams.length }}>
           <div className="draft-board-corner">Round</div>
           {teams.map((team, index) => <TeamHeader key={team} team={team} index={index} counts={teamCounts[team]} />)}
           {rounds.map((round) => {
             const roundNumber = rounds.indexOf(round);
-            const activeRound = openPicker === "board" && next?.roundNumber === roundNumber;
             return <Fragment key={round}>
               <div className="draft-board-row">
                 <div className={`draft-board-round ${round === "Franchise Round" ? "is-franchise" : ""}`}><strong>{round === "Franchise Round" ? "FR" : round.replace("Round ", "R")}</strong><span>{round}</span></div>
-                {teams.map((team) => {
+                {teams.map((team, teamIndex) => {
                   const player = currentHistory[`${roundNumber}-${team}`];
                   const status = !history && next?.roundNumber === roundNumber && next?.teamCode === team ? "is-on-clock" : "";
                   const actionable = !player && !!status;
-                  return <div className={`draft-board-cell ${actionable ? "is-open-pick" : ""} ${status}`} key={`${round}-${team}`}>
+                  return <div className={`draft-board-cell ${actionable ? "is-open-pick" : ""} ${status} ${actionable && openPicker === "board" ? "has-open-picker" : ""}`} key={`${round}-${team}`}>
                     {player ? history || readOnly ? <PlayerCard player={player} /> : <EditPickCell roundNumber={roundNumber} teamCode={team} player={player} teamOrder={teams} franchiseTeams={franchiseTeams} />
                       : actionable ? readOnly ? <Link href="/login" className="draft-open-pick-button draft-edit-cell" aria-label={`Sign in to select player for ${team}, pick ${next.pickNumber}`}><PlayerCard player={null} emptyLabel="Select player" /></Link>
                         : <button id="draft-board-current-pick" type="button" className="draft-open-pick-button draft-edit-cell" aria-expanded={openPicker === "board"} aria-controls="draft-player-search" aria-label={`Select player for ${team}, pick ${next.pickNumber}`} disabled={!canPick} onClick={() => onOpenPicker("board")}><PlayerCard player={null} emptyLabel={!canPick ? "Draft unavailable" : openPicker === "board" ? "Search below" : "Select player"} /></button>
                       : <PlayerCard player={null} emptyLabel="Upcoming" />}
+                    {actionable && openPicker === "board" && <div className={`draft-board-picker-anchor ${teamIndex > 4 ? "align-right" : ""}`}><strong>Pick {next.pickNumber} · {team}</strong>{picker}</div>}
                   </div>;
                 })}
               </div>
-              {activeRound && <div className="draft-board-picker-row" style={{ "--picker-align": teams.indexOf(next.teamCode) < 3 ? "start" : teams.indexOf(next.teamCode) > 4 ? "end" : "center" }}><strong>Pick {next.pickNumber} · {next.teamCode}</strong>{picker}</div>}
             </Fragment>;
           })}
         </div> : <div className="draft-board-grid roster-board-grid" style={{ "--draft-team-count": teams.length }}>
