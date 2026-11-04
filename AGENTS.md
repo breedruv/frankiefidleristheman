@@ -69,7 +69,7 @@ Build a Next.js web app used by Andrew and Sam to draft for their shared fantasy
 - The carousel and board should share draft state refreshes instead of polling the same endpoints independently.
 - Keep the draft board page focused on the board, a compact read-only view of both personal top 10 lists, and a private franchise reference; player-pool filters and the full research table belong in Player Focus.
 - The active pick opens a compact search anchored to its carousel card or board cell. After a blockable franchise player is selected, show Allowed and Blocked choices beneath that player; a block awards the player to the previous owner and leaves the initiating team on the clock.
-- The franchise reference groups previous-roster players by fantasy owner, shows current player stats, and updates drafted or unrestricted status as picks are recorded. Only players in the current draftable pool are labeled franchiseable.
+- The franchise reference is one player list with a previous fantasy-team filter. Show each player's photo, prior owner, college, position, current stats, and a clear franchiseable, unrestricted, or drafted status. Only players in the current draftable pool are labeled franchiseable.
 
 ### Franchise selection and blocking
 - Every player in the current season's pool is available for franchise selection. Previous-season ownership creates a possible blocking right, not a restriction on who can be selected.
