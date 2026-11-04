@@ -1,10 +1,14 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import PlayerFocusTable from './PlayerFocusTable';
+import { usePathname, useSearchParams } from 'next/navigation';
+import PlayerFocusTable, { POOL_COLUMNS } from './PlayerFocusTable';
 import { sortPlayers } from '../../../lib/playerSort.mjs';
 
-export default function PlayerFocusWorkspace({ players, pool, draftedPlayerIds, member, hideDrafted }) {
+const defaultColumns = ['team_name', 'position', 'year', 'ppg', 'mpg', 'three_pct', 'ft_pct', 'shots_per_game'];
+const columnStorageKey = 'player-focus-columns';
+
+export default function PlayerFocusWorkspace({ players, pool, draftedPlayerIds, member, hideDrafted, statsMode = 'regular' }) {
   const [lists, setLists] = useState(['Andrew', 'Sam'].map((owner) => ({ owner_name: owner, player_ids: [], revision: 0 })));
   const [drafted, setDrafted] = useState(draftedPlayerIds);
   const [ready, setReady] = useState(false);
@@ -13,9 +17,34 @@ export default function PlayerFocusWorkspace({ players, pool, draftedPlayerIds, 
   const [visible, setVisible] = useState(50);
   const [retry, setRetry] = useState(0);
   const [sort, setSort] = useState({ key: 'ppg', direction: 'desc' });
+  const [columns, setColumns] = useState(defaultColumns);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const byId = new Map(pool.map((player) => [Number(player.player_id), player]));
   const mine = lists.find((list) => list.owner_name === member);
   const available = sortPlayers(hideDrafted ? players.filter((p) => !drafted.includes(Number(p.player_id))) : players, sort.key, sort.direction);
+  function modeHref(mode) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (mode === 'regular') params.delete('stats');
+    else params.set('stats', mode);
+    const query = params.toString();
+    return query ? `${pathname}?${query}` : pathname;
+  }
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(columnStorageKey));
+      if (!Array.isArray(saved)) return;
+      const restored = POOL_COLUMNS.filter(({ key }) => saved.includes(key)).map(({ key }) => key);
+      setColumns(restored);
+      setSort((current) => current.key === 'name' || restored.includes(current.key) ? current : { key: 'name', direction: 'asc' });
+    } catch { /* Use the default columns when browser storage is unavailable. */ }
+  }, []);
+  function toggleColumn(key) {
+    const next = columns.includes(key) ? columns.filter((column) => column !== key) : [...columns, key];
+    setColumns(next);
+    if (sort.key === key && !next.includes(key)) setSort({ key: 'name', direction: 'asc' });
+    try { window.localStorage.setItem(columnStorageKey, JSON.stringify(next)); } catch { /* The choice still works for this visit. */ }
+  }
   useEffect(() => {
     if (!member) return;
     let cancelled = false;
@@ -81,8 +110,8 @@ export default function PlayerFocusWorkspace({ players, pool, draftedPlayerIds, 
         })}</ol>}
       </section>)}</div>
     </aside>
-    <section className="card player-pool-panel"><div className="section-title"><div><h2>Player pool</h2><span className="section-subtitle">{available.length} matching players · Select a name for recent games</span></div></div>
-      <PlayerFocusTable players={available.slice(0, visible)} sort={sort} onSort={(key) => setSort((current) => ({ key, direction: current.key === key && current.direction === 'desc' ? 'asc' : 'desc' }))} draftedPlayerIds={drafted} member={member} shortlistIds={mine?.player_ids || []} canAdd={!!member && ready && !busy && mine?.player_ids.length < 10} onAdd={(id) => save([...mine.player_ids, id])} />
+    <section className="card player-pool-panel"><div className="section-title"><div><h2>Player pool</h2><span className="section-subtitle">{available.length} matching players · Select a name for recent games</span></div><nav className="draft-stats-toggle" aria-label="Stats game type"><Link href={modeHref('regular')} aria-current={statsMode === 'regular' ? 'page' : undefined} className={statsMode === 'regular' ? 'active' : ''}>Regular season</Link><Link href={modeHref('exhibition')} aria-current={statsMode === 'exhibition' ? 'page' : undefined} className={statsMode === 'exhibition' ? 'active' : ''}>Exhibitions</Link></nav><details className="player-columns-menu"><summary>Columns</summary><fieldset><legend>Player is always shown</legend>{POOL_COLUMNS.map(({ key, label }) => <label key={key}><input type="checkbox" checked={columns.includes(key)} onChange={() => toggleColumn(key)} />{label}</label>)}</fieldset></details></div>
+      <PlayerFocusTable players={available.slice(0, visible)} columns={columns} sort={sort} statsMode={statsMode} onSort={(key) => setSort((current) => ({ key, direction: current.key === key && current.direction === 'desc' ? 'asc' : 'desc' }))} draftedPlayerIds={drafted} member={member} shortlistIds={mine?.player_ids || []} canAdd={!!member && ready && !busy && mine?.player_ids.length < 10} onAdd={(id) => save([...mine.player_ids, id])} />
       {visible < available.length && <button className="ghost-pill load-more-players" type="button" onClick={() => setVisible((n) => n + 50)}>Show 50 more ({available.length - visible} remaining)</button>}
     </section>
   </div>;
