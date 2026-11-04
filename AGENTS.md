@@ -94,6 +94,7 @@ Build a Next.js web app used by Andrew and Sam to draft for their shared fantasy
 - The Player Focus pool lets each browser choose visible columns while keeping Player visible. Shooting percentages use total makes divided by total attempts; show no percentage when a player has no attempts.
 - Player Focus PPG, MPG, shooting percentages, and last-five stats use each player's latest ESPN source season with recorded games. The ESPN season can differ from the fantasy draft year; make it available as an optional pool column.
 - The draft board franchise list and Player Focus can toggle between Regular Season and Exhibition stats. Each mode uses only its own games from the latest ESPN source season; missing exhibition stats show blank values. Exhibition averages include reported box scores with missing minutes, while MPG averages only reported minutes.
+- Franchise-list player rows expand to show the same mode-specific recent games and shot map used on Player Focus; exhibition mode has no shot map.
 - Andrew confirmed Draft.csv is the correct end-of-2025 fantasy-roster ownership snapshot for the 2026 franchise round. Use it when 2025 fantasy_rosters has not been loaded; do not infer ownership from NCAA rosters.
 - ESPN 100 is a freshman-only ranking with one eligible ranking year per player; display its year with the ranking and do not treat it as a multi-year player history.
 - Previous-season PPG rank is the player's rank among all players available in that season's player pool, calculated from that season's PPG.

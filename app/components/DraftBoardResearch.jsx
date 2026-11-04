@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { DEFAULT_TEAMS } from "../../lib/draftRules.mjs";
+import { PlayerFocusDetail } from "../draft/players/PlayerFocusTable";
 
 const stat = (value) => value == null || !Number.isFinite(Number(value)) ? "—" : Number(value).toFixed(1);
 
 export default function DraftBoardResearch({ research, picks, teams = DEFAULT_TEAMS, error, onRefresh }) {
   const [teamFilter, setTeamFilter] = useState("All");
   const [statsMode, setStatsMode] = useState("regular");
+  const [expanded, setExpanded] = useState(null);
   const players = new Map(research?.players.map((player) => [Number(player.player_id), player]) || []);
   const drafted = new Map(picks.map((pick) => [Number(pick.player_id), pick]));
   const completed = new Set(picks.filter((pick) => Number(pick.round_number) === 0).map((pick) => pick.team_code));
@@ -31,7 +33,8 @@ export default function DraftBoardResearch({ research, picks, teams = DEFAULT_TE
         const pick = drafted.get(Number(player.player_id));
         const stats = metrics(player);
         const status = pick ? "drafted" : completed.has(player.previous_owner) ? "unrestricted" : "franchiseable";
-        return <tr key={player.player_id} className={`draft-franchise-${status}`}><td><div className="draft-franchise-player"><span className="draft-franchise-avatar">{player.headshot ? <img src={player.headshot} alt="" /> : "?"}</span><span><strong>{`${player.first_name || ""} ${player.last_name || ""}`.trim()}</strong><small>{player.team_name || "College unavailable"}</small></span></div></td><td><span className="draft-owner-badge">{player.previous_owner}</span></td><td>{player.position || "—"}</td>{statsMode === "exhibition" && <td>{stats.games ?? "—"}</td>}<td>{stat(stats.ppg)}</td><td>{stat(stats.mpg)}</td><td>{stat(stats.fgm)}/{stat(stats.fga)}</td><td>{stat(stats.tpm)}/{stat(stats.tpa)}</td><td>{stat(stats.last5_ppg)}</td><td><span className={`draft-status-badge ${status}`}>{pick ? `Drafted · ${pick.team_code}` : status === "unrestricted" ? "Unrestricted" : "Franchiseable"}</span></td></tr>;
+        const open = expanded === player.player_id;
+        return <Fragment key={player.player_id}><tr className={`draft-franchise-${status} player-focus-clickable`} onClick={() => setExpanded(open ? null : player.player_id)}><td><div className="draft-franchise-player"><span className="draft-franchise-avatar">{player.headshot ? <img src={player.headshot} alt="" /> : "?"}</span><span><button type="button" className="player-detail-button" aria-expanded={open} onClick={(event) => { event.stopPropagation(); setExpanded(open ? null : player.player_id); }}><strong>{`${player.first_name || ""} ${player.last_name || ""}`.trim()}</strong></button><small>{player.team_name || "College unavailable"}</small></span></div></td><td><span className="draft-owner-badge">{player.previous_owner}</span></td><td>{player.position || "—"}</td>{statsMode === "exhibition" && <td>{stats.games ?? "—"}</td>}<td>{stat(stats.ppg)}</td><td>{stat(stats.mpg)}</td><td>{stat(stats.fgm)}/{stat(stats.fga)}</td><td>{stat(stats.tpm)}/{stat(stats.tpa)}</td><td>{stat(stats.last5_ppg)}</td><td><span className={`draft-status-badge ${status}`}>{pick ? `Drafted · ${pick.team_code}` : status === "unrestricted" ? "Unrestricted" : "Franchiseable"}</span></td></tr>{open && <tr><td colSpan={statsMode === "exhibition" ? 10 : 9}><PlayerFocusDetail player={player} statsMode={statsMode} /></td></tr>}</Fragment>;
       }) : <tr><td colSpan={statsMode === "exhibition" ? 10 : 9}>No players from this team are in the current pool.</td></tr>}</tbody></table></div>
     </>}
   </section>;
