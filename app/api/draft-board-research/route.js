@@ -4,6 +4,7 @@ import { getDraftHistory } from "../../../lib/draftHistory";
 import { DRAFT_SEASON } from "../../../lib/draftRules.mjs";
 import { supabase } from "../../../lib/supabase";
 import { getExhibitionStats } from "../../../lib/exhibitionStats";
+import { currentSeasonStats } from "../../../lib/exhibitionStats.mjs";
 
 export const dynamic = "force-dynamic";
 
@@ -28,8 +29,8 @@ export async function GET() {
     const history = new Map(Object.values(getDraftHistory("2025")?.draftSlots || {}).map((player) => [Number(player.playerId), player]));
     return Response.json({
       lists,
-      players: players.map((player) => ({ ...player, previous_owner: state.owners[player.player_id] || null })),
-      exhibitionStats: Object.fromEntries(ids.filter((id) => allExhibitionStats[id]).map((id) => [id, allExhibitionStats[id]])),
+      players: players.map((player) => ({ ...currentSeasonStats(player, DRAFT_SEASON + 1), previous_owner: state.owners[player.player_id] || null })),
+      exhibitionStats: Object.fromEntries(ids.filter((id) => allExhibitionStats[id]?.stats_season === DRAFT_SEASON + 1).map((id) => [id, allExhibitionStats[id]])),
       excludedCount: Object.keys(state.owners).filter((id) => !currentIds.has(Number(id))).length,
       missingNames: Object.fromEntries(lists.flatMap((list) => list.player_ids).filter((id) => !currentIds.has(Number(id))).map((id) => [id, history.get(Number(id))?.name || `Player ${id}`]))
     });

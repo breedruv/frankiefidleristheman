@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { overlayExhibitionStats, summarizeExhibitionStats } from "../lib/exhibitionStats.mjs";
+import { currentSeasonStats, overlayExhibitionStats, summarizeExhibitionStats } from "../lib/exhibitionStats.mjs";
 
 test("exhibition averages keep reported scores with missing minutes and use the latest source season", () => {
   const games = [
@@ -30,4 +30,13 @@ test("players without exhibition games never display regular-season averages", (
   assert.equal(shown.stats_season, null);
   assert.equal(shown.games, 0);
   assert.equal(shown.team_name, "UCLA");
+});
+
+test("regular stats stay blank until the active source season has a game", () => {
+  const older = currentSeasonStats({ player_id: 1, headshot: "photo", ppg: 31, last5_ppg: 29, stats_season: 2026 }, 2027);
+  assert.equal(older.ppg, null);
+  assert.equal(older.last5_ppg, null);
+  assert.equal(older.stats_season, null);
+  assert.equal(older.headshot, "photo");
+  assert.equal(currentSeasonStats({ ppg: 31, stats_season: 2027 }, 2027).ppg, 31);
 });

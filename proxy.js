@@ -1,15 +1,16 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
-import { memberName, requiresMember } from './lib/access.mjs';
+import { memberName, requiresMember, shouldVerifyUserInProxy } from './lib/access.mjs';
 
 export async function proxy(request) {
   const path = request.nextUrl.pathname;
   const restricted = process.env.PRE_DRAFT_PRIVATE === 'true';
+  const memberRequired = requiresMember(path, request.method, restricted);
   let response = NextResponse.next({ request });
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
   let member = null;
-  if (url && key && request.cookies.getAll().some((c) => c.name.startsWith('sb-'))) {
+  if (shouldVerifyUserInProxy(path, request.method, memberRequired) && url && key && request.cookies.getAll().some((c) => c.name.startsWith('sb-'))) {
     const client = createServerClient(url, key, {
       cookieOptions: { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' },
       cookies: {
@@ -24,7 +25,7 @@ export async function proxy(request) {
     const { data } = await client.auth.getUser();
     member = memberName(data.user);
   }
-  if (requiresMember(path, request.method, restricted) && !member) {
+  if (memberRequired && !member) {
     const denied = path.startsWith('/api/')
       ? NextResponse.json({ error: 'Sign in as Andrew or Sam to continue.' }, { status: 401 })
       : NextResponse.redirect(new URL('/login', request.url));

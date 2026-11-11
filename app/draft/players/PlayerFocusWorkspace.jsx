@@ -57,8 +57,10 @@ export default function PlayerFocusWorkspace({ players, pool, draftedPlayerIds, 
       } catch (err) { if (!cancelled) setError(err.message || 'Unable to load your lists.'); }
     }
     load();
-    const interval = setInterval(load, 10000);
-    return () => { cancelled = true; clearInterval(interval); };
+    const onVisible = () => { if (document.visibilityState === 'visible') load(); };
+    const interval = setInterval(onVisible, 30000);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { cancelled = true; clearInterval(interval); document.removeEventListener('visibilitychange', onVisible); };
   }, [member, retry]);
   useEffect(() => {
     let cancelled = false;
@@ -70,9 +72,11 @@ export default function PlayerFocusWorkspace({ players, pool, draftedPlayerIds, 
         if (!cancelled) setDrafted(data.picks.map((p) => Number(p.player_id)));
       } catch { /* Keep the last confirmed drafted status until the next refresh. */ }
     };
-    const interval = setInterval(load, 5000);
+    const onVisible = () => { if (document.visibilityState === 'visible') load(); };
+    const interval = setInterval(onVisible, 15000);
     window.addEventListener('draft-pick-saved', load);
-    return () => { cancelled = true; clearInterval(interval); window.removeEventListener('draft-pick-saved', load); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { cancelled = true; clearInterval(interval); window.removeEventListener('draft-pick-saved', load); document.removeEventListener('visibilitychange', onVisible); };
   }, []);
   async function save(ids) {
     if (busy || !ready || !mine) return;
