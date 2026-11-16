@@ -14,6 +14,9 @@ an HTTP-only server session and removes them from the address bar. Projects that
 can edit email templates may instead use `docs/magic-link-email.html` and the
 `/auth/confirm` callback. Add `http://localhost:3000/auth/confirm` and the deployed
 site's `/auth/confirm` URL under Authentication → URL Configuration → Redirect URLs.
+The built-in sender is for testing: Supabase currently limits it to two emails per
+project per hour and delivers only to project team addresses. Configure custom SMTP
+before relying on magic-link delivery for draft night.
 For the current Vercel site, set Site URL to `https://frankiefidleristheman-6z1t.vercel.app`
 and allow `https://frankiefidleristheman-6z1t.vercel.app/auth/confirm`. Keep the
 localhost redirect for development; the app sends the callback for the domain
