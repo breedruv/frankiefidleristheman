@@ -1,6 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loginCredentials, memberName, requiresMember, sessionTokens, shouldVerifyUserInProxy } from '../lib/access.mjs';
+import { authDestination, loginCredentials, memberName, requiresMember, sessionTokens, shouldVerifyUserInProxy } from '../lib/access.mjs';
+
+test('recovery links open password setup, ordinary links open player focus', () => {
+  assert.equal(authDestination('recovery'), '/reset-password');
+  assert.equal(authDestination('magiclink'), '/draft/players');
+  assert.equal(authDestination(null), '/draft/players');
+  assert.equal(requiresMember('/reset-password', 'GET', true), false);
+  assert.equal(requiresMember('/api/auth/password', 'POST', false), true);
+  assert.equal(requiresMember('/api/auth/session', 'POST', false), false);
+});
 
 test('password sign-in accepts bounded credentials for an existing account', () => {
   assert.deepEqual(loginCredentials({ email: ' ANDREW@example.com ', password: 'secret' }), { email: 'andrew@example.com', password: 'secret' });

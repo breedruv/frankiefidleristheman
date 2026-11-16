@@ -26,6 +26,11 @@ be opened in another browser. The callback also accepts the PKCE code flow, whic
 requires opening the link in the browser where it was requested. Used or expired
 links return to sign-in with a message. Requests never automatically create accounts.
 
+Password-recovery links create a temporary session and open `/reset-password`,
+where the member sets a new password. Signed-in members can also open that page
+from the account menu. `/api/auth/password` checks the verified member before
+calling Supabase Auth `updateUser`; it does not store passwords in app tables.
+
 Required environment variables:
 
 ```dotenv

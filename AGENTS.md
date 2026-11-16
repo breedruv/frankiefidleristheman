@@ -136,6 +136,7 @@ Build a Next.js web app used by Andrew and Sam to draft for their shared fantasy
 ### Draft workspace implementation reference
 - Account allowlist: verified Supabase users whose admin-controlled `app_metadata.member_name` is `Andrew` or `Sam`. The two existing accounts use email and password sign-in; passwords are set privately in Supabase Auth. Vercel email allowlist variables are not required. No public registration.
 - Previously issued magic links remain supported by `app/components/CompleteMagicLink.jsx`, `/api/auth/session`, and `/auth/confirm`; the normal login form no longer sends emails.
+- Supabase password-recovery links open `/reset-password` after establishing a verified member session. Signed-in Andrew and Sam can use the account menu to set or change their own password; `/api/auth/password` uses Supabase Auth `updateUser`.
 - Development remains open with `PRE_DRAFT_PRIVATE=false`. Set it to `true` and redeploy/restart to expose only the read-only public board and sign-in. Writes and personal lists always require membership.
 - Shared franchise/snake rules: `lib/draftRules.mjs`. Previous ownership: `lib/draftState.js`. Record both initiating and receiving teams for a block.
 - Player Focus lists: `app/draft/players/PlayerFocusWorkspace.jsx`, `/api/shortlists`, and the service-only `draft_shortlists` table.
