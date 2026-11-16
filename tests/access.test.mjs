@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { memberName, requiresMember, sessionTokens, shouldVerifyUserInProxy } from '../lib/access.mjs';
+import { loginCredentials, memberName, requiresMember, sessionTokens, shouldVerifyUserInProxy } from '../lib/access.mjs';
+
+test('password sign-in accepts bounded credentials for an existing account', () => {
+  assert.deepEqual(loginCredentials({ email: ' ANDREW@example.com ', password: 'secret' }), { email: 'andrew@example.com', password: 'secret' });
+  for (const value of [null, {}, { email: 'invalid', password: 'secret' }, { email: 'andrew@example.com' }, { email: 'andrew@example.com', password: '' }, { email: 'andrew@example.com', password: 'x'.repeat(1025) }]) {
+    assert.equal(loginCredentials(value), null);
+  }
+});
 test('only verified Supabase accounts with admin-assigned member names can own lists', () => {
   assert.equal(memberName({ email: 'andrew@example.com', email_confirmed_at: 'today', app_metadata: { member_name: 'Andrew' } }), 'Andrew');
   assert.equal(memberName({ email: 'sam@example.com', email_confirmed_at: 'today', app_metadata: { member_name: 'Sam' } }), 'Sam');
