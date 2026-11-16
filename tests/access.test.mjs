@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { memberName, requiresMember, sessionTokens, shouldVerifyUserInProxy } from '../lib/access.mjs';
-const env = { ANDREW_EMAIL: 'andrew@example.com', SAM_EMAIL: 'sam@example.com' };
-test('only verified configured accounts can own lists', () => {
-  assert.equal(memberName({ email: 'ANDREW@example.com', email_confirmed_at: 'today' }, env), 'Andrew');
-  assert.equal(memberName({ email: 'andrew@example.com' }, env), null);
-  assert.equal(memberName({ email: 'other@example.com', email_confirmed_at: 'today' }, env), null);
+test('only verified Supabase accounts with admin-assigned member names can own lists', () => {
+  assert.equal(memberName({ email: 'andrew@example.com', email_confirmed_at: 'today', app_metadata: { member_name: 'Andrew' } }), 'Andrew');
+  assert.equal(memberName({ email: 'sam@example.com', email_confirmed_at: 'today', app_metadata: { member_name: 'Sam' } }), 'Sam');
+  assert.equal(memberName({ email: 'andrew@example.com', app_metadata: { member_name: 'Andrew' } }), null);
+  assert.equal(memberName({ email: 'other@example.com', email_confirmed_at: 'today', user_metadata: { member_name: 'Andrew' } }), null);
+  assert.equal(memberName({ email: 'other@example.com', email_confirmed_at: 'today', app_metadata: { member_name: 'Other' } }), null);
 });
 test('development reads remain open, list data and writes require membership', () => {
   assert.equal(requiresMember('/draft/players', 'GET', false), false);

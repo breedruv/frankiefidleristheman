@@ -2,10 +2,11 @@
 
 ## Accounts and development
 
-Supabase Authentication handles email magic-link sign-in. Only verified users matching
-server environment variables `ANDREW_EMAIL` and `SAM_EMAIL` can access private lists
-or change picks. Create these two users in Supabase Authentication; there is no
-public registration, and the app does not request passwords.
+Supabase Authentication handles email magic-link sign-in. Only verified users with
+an admin-assigned `app_metadata.member_name` of `Andrew` or `Sam` can access private
+lists or change picks. These two accounts have their names assigned in Supabase Auth;
+there is no public registration, and the app does not request passwords. Assign
+future member names with the Supabase Admin API, not user-editable `user_metadata`.
 
 Supabase's standard Magic Link email works without custom SMTP. It returns to the
 Site URL with `#access_token=...`; `CompleteMagicLink` exchanges those tokens for
@@ -28,8 +29,6 @@ Required environment variables:
 NEXT_PUBLIC_SUPABASE_URL=<existing project URL>
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<existing publishable key>
 SUPABASE_SERVICE_ROLE_KEY=<server-only service role key>
-ANDREW_EMAIL=<Andrew's account email>
-SAM_EMAIL=<Sam's account email>
 PRE_DRAFT_PRIVATE=false
 ```
 
