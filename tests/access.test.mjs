@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { memberName, requiresMember, shouldVerifyUserInProxy } from '../lib/access.mjs';
+import { memberName, requiresMember, sessionTokens, shouldVerifyUserInProxy } from '../lib/access.mjs';
 const env = { ANDREW_EMAIL: 'andrew@example.com', SAM_EMAIL: 'sam@example.com' };
 test('only verified configured accounts can own lists', () => {
   assert.equal(memberName({ email: 'ANDREW@example.com', email_confirmed_at: 'today' }, env), 'Andrew');
@@ -20,6 +20,13 @@ test('sign-in and sign-out endpoints can establish or clear a session', () => {
   assert.equal(requiresMember('/api/auth', 'DELETE', true), false);
   assert.equal(requiresMember('/auth/confirm', 'GET', true), false);
   assert.equal(requiresMember('/api/auth-other', 'POST', true), true);
+  assert.equal(requiresMember('/api/auth/session', 'POST', true), false);
+});
+test('implicit sign-in accepts only bounded token pairs', () => {
+  assert.deepEqual(sessionTokens({ access_token: 'access', refresh_token: 'refresh' }), { access_token: 'access', refresh_token: 'refresh' });
+  for (const value of [null, {}, { access_token: 'access' }, { access_token: '', refresh_token: 'refresh' }, { access_token: 'x'.repeat(8193), refresh_token: 'refresh' }]) {
+    assert.equal(sessionTokens(value), null);
+  }
 });
 test('pre-draft mode allows only board and its read endpoints', () => {
   for (const path of ['/draft/players', '/api/player-detail', '/admin/draft', '/']) assert.equal(requiresMember(path, 'GET', true), true);

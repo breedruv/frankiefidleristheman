@@ -135,6 +135,7 @@ Build a Next.js web app used by Andrew and Sam to draft for their shared fantasy
 
 ### Draft workspace implementation reference
 - Account allowlist: server-only `ANDREW_EMAIL` and `SAM_EMAIL`; verified Supabase magic-link sessions (user chose email links instead of passwords). No public registration. Email template: `docs/magic-link-email.html`; confirmation handler: `/auth/confirm`.
+- The standard Supabase Magic Link email is supported without custom SMTP: `app/components/CompleteMagicLink.jsx` processes the `#access_token` fragment and `/api/auth/session` verifies and stores an HTTP-only server session. The custom token-hash email template remains optional when template editing is available.
 - Development remains open with `PRE_DRAFT_PRIVATE=false`. Set it to `true` and redeploy/restart to expose only the read-only public board and sign-in. Writes and personal lists always require membership.
 - Shared franchise/snake rules: `lib/draftRules.mjs`. Previous ownership: `lib/draftState.js`. Record both initiating and receiving teams for a block.
 - Player Focus lists: `app/draft/players/PlayerFocusWorkspace.jsx`, `/api/shortlists`, and the service-only `draft_shortlists` table.

@@ -5,6 +5,7 @@ import PositionRosterNav from "./components/PositionRosterNav";
 import { getFantasyRoster } from "../lib/queries";
 import { currentMember } from "../lib/auth";
 import AccountMenu from "./components/AccountMenu";
+import CompleteMagicLink from "./components/CompleteMagicLink";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,7 @@ export default async function RootLayout({ children }) {
     <html lang="en" className={`${display.variable} ${body.variable}`}>
       <body>
         <div className="app-shell">
+          <CompleteMagicLink />
           <header className="site-header">
             <div className="brand">
               <span className="brand-mark">CBB</span>

@@ -7,13 +7,20 @@ server environment variables `ANDREW_EMAIL` and `SAM_EMAIL` can access private l
 or change picks. Create these two users in Supabase Authentication; there is no
 public registration, and the app does not request passwords.
 
-In Supabase Authentication → Email Templates → Magic Link, paste
-`docs/magic-link-email.html`. Add `http://localhost:3000/auth/confirm` and the deployed
+Supabase's standard Magic Link email works without custom SMTP. It returns to the
+Site URL with `#access_token=...`; `CompleteMagicLink` exchanges those tokens for
+an HTTP-only server session and removes them from the address bar. Projects that
+can edit email templates may instead use `docs/magic-link-email.html` and the
+`/auth/confirm` callback. Add `http://localhost:3000/auth/confirm` and the deployed
 site's `/auth/confirm` URL under Authentication → URL Configuration → Redirect URLs.
-The template uses the validated redirect URL and token hash so the link can be opened
-in another browser. The handler also accepts the default PKCE code flow, which requires
-opening the link in the browser where it was requested. Used or expired links return
-to sign-in with a message. Requests never automatically create accounts.
+For the current Vercel site, set Site URL to `https://frankiefidleristheman-6z1t.vercel.app`
+and allow `https://frankiefidleristheman-6z1t.vercel.app/auth/confirm`. Keep the
+localhost redirect for development; the app sends the callback for the domain
+where sign-in was requested.
+The optional template uses the validated redirect URL and token hash so the link can
+be opened in another browser. The callback also accepts the PKCE code flow, which
+requires opening the link in the browser where it was requested. Used or expired
+links return to sign-in with a message. Requests never automatically create accounts.
 
 Required environment variables:
 
