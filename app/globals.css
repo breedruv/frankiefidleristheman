@@ -1,4 +1,6 @@
 :root {
+  --font-body: "Segoe UI", sans-serif;
+  --font-display: "Arial Narrow", "Franklin Gothic Medium", sans-serif;
   --bg: #f6f1e9;
   --bg-strong: #efe3d2;
   --ink: #1b1b1b;

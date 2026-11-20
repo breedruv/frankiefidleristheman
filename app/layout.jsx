@@ -1,23 +1,10 @@
 import "./globals.css";
 import Link from "next/link";
-import { Bebas_Neue, Archivo } from "next/font/google";
 import { currentMember } from "../lib/auth";
 import AccountMenu from "./components/AccountMenu";
 import CompleteMagicLink from "./components/CompleteMagicLink";
 
 export const dynamic = "force-dynamic";
-
-const display = Bebas_Neue({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--font-display"
-});
-
-const body = Archivo({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-body"
-});
 
 export const metadata = {
   title: "Btown Sparties",
@@ -29,7 +16,7 @@ export default async function RootLayout({ children }) {
   const publicOnly = process.env.PRE_DRAFT_PRIVATE === "true" && !member;
 
   return (
-    <html lang="en" className={`${display.variable} ${body.variable}`}>
+    <html lang="en">
       <body>
         <div className="app-shell">
           <CompleteMagicLink />
