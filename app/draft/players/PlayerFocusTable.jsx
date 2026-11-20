@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useState } from "react";
+import { formatHeight } from "../../../lib/sourceProfiles.mjs";
 
 const number = (value) => value === null || value === undefined || value === "" || !Number.isFinite(Number(value)) ? "--" : Number(value).toFixed(1);
 export const POOL_COLUMNS = [
@@ -43,7 +44,7 @@ export function PlayerFocusDetail({ player, statsMode }) {
     return () => { cancelled = true; };
   }, [player.player_id, statsMode]);
   if (state.loading) return <div className="player-focus-expanded"><span className="loading-line" /> Loading recent games{statsMode === 'exhibition' ? '...' : ' and shot map...'}</div>;
-  return <div className="player-focus-expanded">{state.error && <p role="alert">{state.error}</p>}
+  return <div className="player-focus-expanded">{player.source_profile && <div className="source-profile"><span><b>Eligible</b> {player.source_profile.positionSummary}</span>{player.source_profile.height && <span><b>Height</b> {formatHeight(player.source_profile.height)} ({player.source_profile.heightSources.join(", ")})</span>}<span><b>Listed by</b> {player.source_profile.sources.join(", ")}</span></div>}{state.error && <p role="alert">{state.error}</p>}
     <div><h3>{statsMode === 'exhibition' ? 'Last 5 exhibition games' : 'Last 5 regular-season games'}</h3><div className="player-last-five">{state.games.length ? state.games.map((game) => <div className="player-game-mini" key={`${game.game_id}-${game.game_date}`}><strong>{game.game_date || "Game"}</strong><span className="player-game-opponent">{game.opponent_logo && <img src={game.opponent_logo} alt="" />}<b>{game.opponent_name || "Opponent"}{game.is_exhibition ? " (Exhibition)" : ""}</b></span><b>{game.pts ?? "—"} PTS</b><span>{number(game.minutes)} MIN</span><span>{game.fgm ?? "—"}/{game.fga ?? "—"} FG</span><span>{game.tpm ?? "—"}/{game.tpa ?? "—"} 3PT</span><span>{game.ftm ?? "—"}/{game.fta ?? "—"} FT</span></div>) : <span>No game log available.</span>}</div></div>
     {statsMode !== 'exhibition' && <div className="player-shot-map"><h3>Recent games shot map</h3><div className="shot-map-court">{state.shots.map((shot) => { const courtX = Math.min(100, Math.max(0, Number(shot.coord_x) / 50 * 100)); const courtY = Math.min(100, Math.max(0, (Number(shot.coord_y) + 1.25) / 47 * 100)); return <i key={shot.play_id} className={shot.result === "Made" ? "made" : "missed"} style={{ left: `${courtX}%`, top: `${courtY}%` }} title={`${shot.result} ${shot.shot_type}`} />; })}{!state.shots.length && <span className="shot-map-empty">No shot-location data available.</span>}</div><div className="shot-map-legend"><span className="made-key">○ Made</span><span className="missed-key">× Missed</span></div><small>{state.shots.length} recorded shots</small></div>}
   </div>;

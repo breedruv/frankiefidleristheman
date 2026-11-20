@@ -1358,3 +1358,7 @@ main { padding: 2rem 4vw 3.5rem; }
 .draft-stats-toggle button.active, .draft-stats-toggle a.active { color:#10202d; background:var(--accent-2); }
 .draft-stats-toggle button:focus-visible, .draft-stats-toggle a:focus-visible { outline:2px solid var(--accent-2); outline-offset:2px; }
 @media(max-width:700px) { .player-pool-panel .section-title, .draft-research-section > .section-title { flex-wrap:wrap; } .draft-research-lists { grid-template-columns:1fr; } }
+
+/* Combined source eligibility (ESPN, CBS, Yahoo, Lindy's) */
+.source-profile { display:flex; flex-wrap:wrap; gap:.35rem 1rem; margin:0 0 .75rem; color:var(--muted); font-size:.85rem; }
+.source-profile b { margin-right:.25rem; font-weight:800; }
