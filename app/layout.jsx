@@ -1,8 +1,6 @@
 import "./globals.css";
 import Link from "next/link";
 import { Bebas_Neue, Archivo } from "next/font/google";
-import PositionRosterNav from "./components/PositionRosterNav";
-import { getFantasyRoster } from "../lib/queries";
 import { currentMember } from "../lib/auth";
 import AccountMenu from "./components/AccountMenu";
 import CompleteMagicLink from "./components/CompleteMagicLink";
@@ -29,18 +27,6 @@ export const metadata = {
 export default async function RootLayout({ children }) {
   const member = await currentMember();
   const publicOnly = process.env.PRE_DRAFT_PRIVATE === "true" && !member;
-  const teamId = 2;
-  const roster = publicOnly ? [] : await getFantasyRoster({ teamId });
-  const players = roster
-    .map((player) => {
-      const name = `${player.first_name ?? ""} ${player.last_name ?? ""}`.trim();
-      return {
-        player_id: player.player_id,
-        label: name || `Player ${player.player_id}`,
-        player_position: player.player_position
-      };
-    })
-    .sort((a, b) => a.label.localeCompare(b.label));
 
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`}>
@@ -59,21 +45,8 @@ export default async function RootLayout({ children }) {
               <div className="nav-primary">
                 <Link href="/draft/board">Draft Board</Link>
                 {!publicOnly && <Link href="/draft/players">Player Focus</Link>}
-                {!publicOnly && <Link className="nav-highlight" href="/picks">Game</Link>}
+                {!publicOnly && <Link className="nav-highlight" href="/compare">Compare</Link>}
               </div>
-              {!publicOnly && <details className="nav-more">
-                <summary>More</summary>
-                <div className="nav-more-menu">
-                  <PositionRosterNav players={players} />
-                  <Link href="/">Home</Link>
-                  <Link href="/scoreboard">Scoreboard</Link>
-                  <Link href="/matchup">Matchup</Link>
-                  <Link href="/roster">Roster</Link>
-                  <Link href="/compare">Compare</Link>
-                  <Link href="/admin/draft">Draft setup</Link>
-                  <Link href="/admin/weeks">Admin</Link>
-                </div>
-              </details>}
             </nav>
             <div className="header-actions">
               <AccountMenu member={member} />
