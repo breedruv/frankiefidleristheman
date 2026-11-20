@@ -2,21 +2,21 @@
 
 ## Accounts and development
 
-Supabase Authentication handles email and password sign-in. Only verified users with
+Supabase Authentication handles email magic-link sign-in. Only verified users with
 an admin-assigned `app_metadata.member_name` of `Andrew` or `Sam` can access private
 lists or change picks. These two accounts have their names assigned in Supabase Auth;
-there is no public registration. Set passwords privately on those existing accounts.
-Assign future member names with the Supabase Admin API, not user-editable `user_metadata`.
+there is no public registration, and the app does not request passwords. Assign
+future member names with the Supabase Admin API, not user-editable `user_metadata`.
 
-The password form does not send an email. Previously issued magic links still work
-through the existing callback. Supabase's standard Magic Link email returns to the
+Supabase's standard Magic Link email returns to the
 Site URL with `#access_token=...`; `CompleteMagicLink` exchanges those tokens for
 an HTTP-only server session and removes them from the address bar. Projects that
 can edit email templates may instead use `docs/magic-link-email.html` and the
 `/auth/confirm` callback. Add `http://localhost:3000/auth/confirm` and the deployed
 site's `/auth/confirm` URL under Authentication → URL Configuration → Redirect URLs.
-The built-in sender limits magic links to two emails per project per hour and
-delivers only to project team addresses; this does not affect password sign-in.
+The built-in sender is for testing: Supabase currently limits it to two emails per
+project per hour and delivers only to project team addresses. Configure custom SMTP
+before relying on magic-link delivery for draft night.
 For the current Vercel site, set Site URL to `https://frankiefidleristheman-6z1t.vercel.app`
 and allow `https://frankiefidleristheman-6z1t.vercel.app/auth/confirm`. Keep the
 localhost redirect for development; the app sends the callback for the domain
@@ -26,10 +26,6 @@ be opened in another browser. The callback also accepts the PKCE code flow, whic
 requires opening the link in the browser where it was requested. Used or expired
 links return to sign-in with a message. Requests never automatically create accounts.
 
-Password-recovery links create a temporary session and open `/reset-password`,
-where the member sets a new password. Signed-in members can also open that page
-from the account menu. `/api/auth/password` checks the verified member before
-calling Supabase Auth `updateUser`; it does not store passwords in app tables.
 
 Required environment variables:
 

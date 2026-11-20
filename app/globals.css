@@ -274,7 +274,6 @@ select {
 
 .header-actions {
   display: flex;
-  flex-wrap: wrap;
   gap: 0.8rem;
 }
 

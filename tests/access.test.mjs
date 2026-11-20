@@ -1,22 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { authDestination, loginCredentials, memberName, requiresMember, sessionTokens, shouldVerifyUserInProxy } from '../lib/access.mjs';
+import { memberName, requiresMember, sessionTokens, shouldVerifyUserInProxy } from '../lib/access.mjs';
 
-test('recovery links open password setup, ordinary links open player focus', () => {
-  assert.equal(authDestination('recovery'), '/reset-password');
-  assert.equal(authDestination('magiclink'), '/draft/players');
-  assert.equal(authDestination(null), '/draft/players');
-  assert.equal(requiresMember('/reset-password', 'GET', true), false);
-  assert.equal(requiresMember('/api/auth/password', 'POST', false), true);
+test('removed password reset page remains private', () => {
   assert.equal(requiresMember('/api/auth/session', 'POST', false), false);
+  assert.equal(requiresMember('/reset-password', 'GET', true), true);
 });
 
-test('password sign-in accepts bounded credentials for an existing account', () => {
-  assert.deepEqual(loginCredentials({ email: ' ANDREW@example.com ', password: 'secret' }), { email: 'andrew@example.com', password: 'secret' });
-  for (const value of [null, {}, { email: 'invalid', password: 'secret' }, { email: 'andrew@example.com' }, { email: 'andrew@example.com', password: '' }, { email: 'andrew@example.com', password: 'x'.repeat(1025) }]) {
-    assert.equal(loginCredentials(value), null);
-  }
-});
 test('only verified Supabase accounts with admin-assigned member names can own lists', () => {
   assert.equal(memberName({ email: 'andrew@example.com', email_confirmed_at: 'today', app_metadata: { member_name: 'Andrew' } }), 'Andrew');
   assert.equal(memberName({ email: 'sam@example.com', email_confirmed_at: 'today', app_metadata: { member_name: 'Sam' } }), 'Sam');

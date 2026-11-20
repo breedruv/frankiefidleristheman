@@ -11,5 +11,5 @@ export default function AccountMenu({ member }) {
       window.location.assign('/draft/board');
     } catch { setError('Unable to sign out. Try again.'); }
   }
-  return <><span>{member}</span><Link className="ghost-pill" href="/reset-password">Change password</Link><button type="button" className="ghost-pill" onClick={signOut}>Sign out</button>{error && <small role="alert">{error}</small>}</>;
+  return <><span>{member}</span><button type="button" className="ghost-pill" onClick={signOut}>Sign out</button>{error && <small role="alert">{error}</small>}</>;
 }
