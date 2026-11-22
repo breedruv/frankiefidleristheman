@@ -1364,3 +1364,54 @@ main { padding: 2rem 4vw 3.5rem; }
 /* Combined source eligibility (ESPN, CBS, Yahoo, Lindy's) */
 .source-profile { display:flex; flex-wrap:wrap; gap:.35rem 1rem; margin:0 0 .75rem; color:var(--muted); font-size:.85rem; }
 .source-profile b { margin-right:.25rem; font-weight:800; }
+
+
+/* Player Focus quick team browser */
+.team-browser {
+  margin: 0 0 1rem;
+  border: 1px solid rgba(130, 152, 183, .28);
+  border-radius: 14px;
+  background: rgba(16, 27, 47, .56);
+}
+
+.team-browser > summary,
+.team-browser-conference > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.team-browser > summary::-webkit-details-marker,
+.team-browser-conference > summary::-webkit-details-marker { display: none; }
+
+.team-browser > summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: .8rem 1rem;
+  font-weight: 800;
+}
+
+.team-browser > summary::after { content: "+"; color: var(--teal, #60d8c4); font-size: 1.15rem; }
+.team-browser[open] > summary::after { content: "−"; }
+.team-browser > summary small { margin-left: auto; margin-right: .75rem; color: var(--muted, #a6b0c3); font-weight: 600; }
+.team-browser-content { padding: 0 1rem 1rem; }
+.team-browser-heading { display: flex; gap: .8rem; align-items: center; justify-content: space-between; }
+.team-browser-heading p { margin: 0; color: var(--muted, #a6b0c3); font-size: .86rem; }
+.team-browser-conferences { display: grid; gap: .55rem; margin-top: .8rem; }
+.team-browser-conference { border: 1px solid rgba(130, 152, 183, .2); border-radius: 10px; overflow: hidden; }
+.team-browser-conference > summary { display: flex; justify-content: space-between; padding: .65rem .75rem; font-weight: 750; }
+.team-browser-conference > summary span { color: var(--muted, #a6b0c3); font-size: .78rem; font-weight: 600; }
+.team-browser-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid rgba(130, 152, 183, .15); }
+.team-browser-row { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: .45rem; padding: .38rem .55rem; border-bottom: 1px solid rgba(130, 152, 183, .12); }
+.team-browser-team { display: flex; min-width: 0; align-items: center; gap: .42rem; color: inherit; font-size: .83rem; font-weight: 700; text-decoration: none; }
+.team-browser-team:hover, .team-browser-team.active { color: var(--teal, #60d8c4); }
+.team-browser-team img { width: 22px; height: 22px; flex: 0 0 auto; object-fit: contain; }
+.team-browser-team span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.team-browser-sources { display: flex; flex: 0 0 auto; gap: .38rem; }
+.team-browser-sources a { color: var(--muted, #a6b0c3); font-size: .68rem; font-weight: 800; text-decoration: none; }
+.team-browser-sources a:hover { color: var(--teal, #60d8c4); text-decoration: underline; }
+
+@media (max-width: 720px) {
+  .team-browser-heading { align-items: flex-start; flex-direction: column; }
+  .team-browser-grid { grid-template-columns: 1fr; }
+}
