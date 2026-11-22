@@ -2,7 +2,9 @@
 
 import { Fragment, useEffect, useState } from "react";
 import { formatHeight } from "../../../lib/sourceProfiles.mjs";
+import { DRAFT_SEASON } from "../../../lib/draftRules.mjs";
 
+const PRIOR = `${String(DRAFT_SEASON - 1).slice(-2)}-${String(DRAFT_SEASON).slice(-2)}`;
 const number = (value) => value === null || value === undefined || value === "" || !Number.isFinite(Number(value)) ? "--" : Number(value).toFixed(1);
 export const POOL_COLUMNS = [
   { key: "team_name", label: "Team" },
@@ -18,9 +20,14 @@ export const POOL_COLUMNS = [
   { key: "tpa", label: "3PA/G" },
   { key: "three_pct", label: "3PT%" },
   { key: "ft_pct", label: "FT%" },
-  { key: "shots_per_game", label: "Shots/G" }
+  { key: "shots_per_game", label: "Shots/G" },
+  { key: "prev_games", label: `${PRIOR} GP` },
+  { key: "prev_starts", label: `${PRIOR} GS` },
+  { key: "prev_ppg", label: `${PRIOR} PPG` },
+  { key: "prev_mpg", label: `${PRIOR} MPG` },
+  { key: "prev_last5_ppg", label: `${PRIOR} Last 5` }
 ];
-const textColumns = new Set(["team_name", "position", "year", "stats_season", "games"]);
+const textColumns = new Set(["team_name", "position", "year", "stats_season", "games", "prev_games", "prev_starts"]);
 const displayValue = (player, key) => {
   if (textColumns.has(key)) return player[key] || "--";
   const value = number(player[key]);

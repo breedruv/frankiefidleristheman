@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getDraftPool, getDraftedPlayerIds } from "../../../lib/queries";
+import { getDraftPool, getDraftedPlayerIds, getPlayerStatAverages } from "../../../lib/queries";
 import { withSourceProfiles } from "../../../lib/sourceProfiles";
 import { getDraftRosterPool } from "../../../lib/draftRoster";
 import { mergePlayerStats } from "../../../lib/playerStats";
@@ -21,12 +21,13 @@ export default async function DraftPlayersPage({ searchParams }) {
   const statsMode = params?.stats === "exhibition" ? "exhibition" : "regular";
   const filters = { position: params?.position || "All", team: params?.team || "All", minPpg: params?.min_ppg || "", maxPpg: params?.max_ppg || "", search: params?.search || "" };
   const hideDrafted = params?.hide_drafted === "1";
-  const [databasePlayers, draftedPlayerIds, exhibitionStats] = await Promise.all([getDraftPool(5000), getDraftedPlayerIds(2026), statsMode === "exhibition" ? getExhibitionStats() : Promise.resolve(null)]);
+  const [databasePlayers, draftedPlayerIds, exhibitionStats, priorAverages] = await Promise.all([getDraftPool(5000), getDraftedPlayerIds(2026), statsMode === "exhibition" ? getExhibitionStats() : Promise.resolve(null), getPlayerStatAverages(DRAFT_SEASON)]);
+  const priorById = new Map(priorAverages.map((row) => [Number(row.player_id), { prev_games: row.games_played, prev_starts: row.games_started, prev_ppg: row.ppg, prev_mpg: row.mpg, prev_last5_ppg: row.last5_ppg }]));
   const roster = getDraftRosterPool(5000).map((p) => ({ ...p, position: num(p.height) >= 82 && p.position === "F" ? "F-C" : p.position }));
   const rosterById = new Map(roster.map((p) => [Number(p.player_id), p]));
   const dbIds = new Set(databasePlayers.map((p) => Number(p.player_id)));
   const base = [...databasePlayers.filter((p) => !roster.length || rosterById.has(Number(p.player_id))).map((p) => { const r = rosterById.get(Number(p.player_id)); return r ? { ...r, ...p, height: p.height ?? r.height, headshot: p.headshot ?? r.headshot } : p; }), ...roster.filter((p) => !dbIds.has(Number(p.player_id)))];
-  const pool = (await withSourceProfiles(mergePlayerStats(base))).map((player) => { const stats = statsMode === "exhibition" ? overlayExhibitionStats(player, exhibitionStats[player.player_id]) : player; return currentSeasonStats(stats, DRAFT_SEASON + 1); });
+  const pool = (await withSourceProfiles(mergePlayerStats(base))).map((player) => { const stats = statsMode === "exhibition" ? overlayExhibitionStats(player, exhibitionStats[player.player_id]) : player; return { ...currentSeasonStats(stats, DRAFT_SEASON + 1), ...priorById.get(Number(player.player_id)) }; });
   const players = pool.filter((p) => { const text = `${p.first_name || ""} ${p.last_name || ""} ${p.team_name || ""}`.toLowerCase(); const positions = (p.position || "").split("-"); const positionMatch = filters.position === "All" || positions.includes(filters.position); const min = filters.minPpg === "" ? null : Number(filters.minPpg); const max = filters.maxPpg === "" ? null : Number(filters.maxPpg); return (!filters.search || text.includes(filters.search.toLowerCase())) && positionMatch && (filters.team === "All" || p.team_name === filters.team) && (!Number.isFinite(min) || (p.ppg != null && Number(p.ppg) >= min)) && (!Number.isFinite(max) || (p.ppg != null && Number(p.ppg) <= max)); });
   const teams = [...new Set(pool.map((p) => p.team_name).filter(Boolean))].sort();
   const teamBrowserGroups = getTeamBrowserTeams(teams);

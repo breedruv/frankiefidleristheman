@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import PlayerFocusTable, { POOL_COLUMNS } from './PlayerFocusTable';
 import { sortPlayers } from '../../../lib/playerSort.mjs';
 
-const defaultColumns = ['team_name', 'position', 'year', 'ppg', 'mpg', 'three_pct', 'ft_pct', 'shots_per_game'];
+const defaultColumns = ['team_name', 'position', 'year', 'ppg', 'mpg', 'three_pct', 'ft_pct', 'shots_per_game', 'prev_starts', 'prev_ppg', 'prev_last5_ppg'];
 const columnStorageKey = 'player-focus-columns';
 
 export default function PlayerFocusWorkspace({ players, pool, draftedPlayerIds, member, hideDrafted, statsMode = 'regular' }) {
