@@ -31,4 +31,6 @@ test("keeps representative teams in their current conferences", () => {
   assert.equal(conferenceFor("Illinois Fighting Illini"), "Big Ten");
   assert.equal(conferenceFor("Alabama Crimson Tide"), "SEC");
   assert.equal(conferenceFor("South Florida Bulls"), "AAC");
+  assert.equal(conferenceFor("Virginia Cavaliers"), "ACC");
+  assert.equal(teams.length, 92);
 });
