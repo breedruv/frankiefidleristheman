@@ -37,3 +37,16 @@ test("a listed C does not need the height rule; stand-ins have no ESPN entry", (
   assert.deepEqual(standIn.sources, ["Yahoo"]);
   assert.equal(standIn.position, "G");
 });
+
+test("preserves player-page URLs from each source", () => {
+  const profile = buildSourceProfile(
+    { player_id: 12345, position: "G", height: 77 },
+    [
+      { source: "cbs", position: "G", height_in: 77, source_url: "https://www.cbssports.com/player" },
+      { source: "yahoo", position: "G", height_in: 77, source_url: "https://sports.yahoo.com/player" },
+    ],
+  );
+  assert.equal(profile.sourceUrls.espn, "https://www.espn.com/mens-college-basketball/player/_/id/12345");
+  assert.equal(profile.sourceUrls.cbs, "https://www.cbssports.com/player");
+  assert.equal(profile.sourceUrls.yahoo, "https://sports.yahoo.com/player");
+});

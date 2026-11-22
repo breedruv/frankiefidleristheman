@@ -1415,3 +1415,7 @@ main { padding: 2rem 4vw 3.5rem; }
   .team-browser-heading { align-items: flex-start; flex-direction: column; }
   .team-browser-grid { grid-template-columns: 1fr; }
 }
+
+.player-source-links { display:flex; flex-wrap:wrap; align-items:center; gap:.45rem; margin:0 0 .75rem; color:var(--muted); font-size:.82rem; }
+.player-source-links a { color:var(--accent-2); font-weight:800; text-decoration:none; }
+.player-source-links a:hover { text-decoration:underline; }
