@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { nextPick } from "../../lib/draftRules.mjs";
-import { rosterRowsForTeams } from "../../lib/rosterView.mjs";
+import { rosterGroups, supplementalRoster } from "../../lib/rosterView.mjs";
 
 const defaultTeams = ["MB", "AS", "SL", "DD", "Len", "Brandon", "John B", "BJ"];
 const rounds = ["Franchise Round", ...Array.from({ length: 17 }, (_, index) => `Round ${index + 1}`)];
@@ -69,7 +69,7 @@ export default function DraftBoardLayout({ history, readOnly = false, picks = []
   const currentRoster = (history ? [] : picks).reduce((map, pick) => { const group = pick.drafted_position; const key = `${pick.team_code}-${group}`; const slot = map[key] || 0; map[`${group}-${pick.team_code}-${slot}`] = { name: pick.player_name, position: pick.drafted_position, college: pick.college_team_name, playerId: pick.player_id, pickNumber: pick.pick_number, blockedTeam: pick.blocked_team_code }; map[key] = slot + 1; return map; }, { ...history?.rosterSlots });
   const teamCounts = teams.reduce((all, team) => { all[team] = { coreTotal: 0, C: 0, F: 0, G: 0, SUP: 0 }; return all; }, {});
   Object.entries(currentHistory).forEach(([key, player]) => { const [round, team] = key.split("-"); if (!teamCounts[team]) return; if (Number(round) <= 12) teamCounts[team].coreTotal += 1; const group = player.position; if (teamCounts[team][group] !== undefined) teamCounts[team][group] += 1; });
-  const rosterRows = rosterRowsForTeams(teamCounts, teams);
+  const supplemental = supplementalRoster(currentHistory);
   const next = nextPick(picks, teams, franchiseTeams);
   return (
     <section className="draft-board-section">
@@ -107,10 +107,13 @@ export default function DraftBoardLayout({ history, readOnly = false, picks = []
         </div> : <div className="draft-board-grid roster-board-grid" style={{ "--draft-team-count": teams.length }}>
           <div className="draft-board-corner">Roster</div>
           {teams.map((team, index) => <TeamHeader key={team} team={team} index={index} counts={teamCounts[team]} />)}
-          {rosterRows.map((group) => Array.from({ length: group.count }, (_, index) => <div className={`draft-board-row ${index === 0 ? "roster-row-start" : ""}`} key={`${group.short}-${index}`}>
+          {rosterGroups.map((group) => Array.from({ length: group.count }, (_, index) => <div className={`draft-board-row ${index === 0 ? "roster-row-start" : ""}`} key={`${group.short}-${index}`}>
             <div className={`draft-board-round roster-group-${group.className}`}><strong>{group.short}</strong><span>{group.label} {index + 1}</span></div>
             {teams.map((team) => { const player = currentRoster[`${group.short}-${team}-${index}`]; return <div className={`draft-board-cell roster-cell-${group.className}`} key={`${group.short}-${index}-${team}`}><PlayerCard supplemental={false} player={player} emptyLabel="Empty slot" /></div>; })}
-          </div>))}
+          </div>))}{supplemental.count > 0 && Array.from({ length: supplemental.count }, (_, index) => <div className={`draft-board-row ${index === 0 ? "roster-row-start" : ""}`} key={`SUP-${index}`}>
+            <div className="draft-board-round roster-group-supplemental"><strong>SUP</strong><span>Supplemental {index + 1}</span></div>
+            {teams.map((team) => { const player = supplemental.players[`${team}-${index}`]; return <div className="draft-board-cell roster-cell-supplemental" key={`SUP-${index}-${team}`}><PlayerCard supplemental player={player} emptyLabel="Open supplemental" /></div>; })}
+          </div>)}
         </div>}
       </div>
     </section>
