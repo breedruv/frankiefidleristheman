@@ -1,4 +1,3 @@
-import DraftCountdown from "../components/DraftCountdown";
 import DraftWorkspace from "../components/DraftWorkspace";
 import { currentMember } from "../../lib/auth";
 
@@ -9,7 +8,6 @@ export default async function DraftBoardPage() {
   return (
     <div className="page draft-board-page">
       {!publicOnly && <div className="draft-subnav"><a className="active" href="/draft/board">Draft Board</a><a href="/draft/players">Player Focus</a><a href="/admin/draft">Draft setup</a></div>}
-      <DraftCountdown />
       <DraftWorkspace readOnly={!member} />
 
     </div>
