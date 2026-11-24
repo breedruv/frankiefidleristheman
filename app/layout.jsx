@@ -16,7 +16,7 @@ export const metadata = {
 
 export default async function RootLayout({ children }) {
   const member = await currentMember();
-  const publicOnly = process.env.PRE_DRAFT_PRIVATE === "true" && !member;
+  const publicView = !member;
   let rosterNavPlayers = [];
   if (member) {
     try {
@@ -36,26 +36,26 @@ export default async function RootLayout({ children }) {
         <div className="app-shell">
           <CompleteMagicLink />
           <header className="site-header">
-            <Link className="brand" href={publicOnly ? "/draft/board" : "/"}>
+            <Link className="brand" href={publicView ? "/scoreboard" : "/"}>
               <span className="brand-mark">CBB</span>
               <div>
-                <p className="brand-title">{publicOnly ? "Fantasy College Basketball" : "B Town Sparties"}</p>
-                <p className="brand-subtitle">{publicOnly ? "Draft Board" : "Fantasy College Basketball Hub"}</p>
+                <p className="brand-title">{publicView ? "Fantasy College Basketball" : "B Town Sparties"}</p>
+                <p className="brand-subtitle">{publicView ? "League Scoreboard" : "Fantasy College Basketball Hub"}</p>
               </div>
             </Link>
             <nav className="site-nav" aria-label="Primary navigation">
               <div className="nav-primary">
-                {publicOnly ? <Link href="/draft/board">Draft Board</Link> : <><Link href="/">Home</Link><Link href="/matchup">Matchup</Link><Link href="/scoreboard">Scoreboard</Link><details className="nav-more"><summary>Players</summary><div className="nav-more-menu"><PositionRosterNav players={rosterNavPlayers} /></div></details><details className="nav-more"><summary>Draft</summary><div className="nav-more-menu"><Link href="/draft/players">Player Focus</Link><Link href="/compare">Compare Players</Link><Link href="/draft/board">Draft Board</Link></div></details><details className="nav-more"><summary>Admin</summary><div className="nav-more-menu"><Link href="/admin/draft">Draft Setup</Link><Link href="/admin/weeks">Season Schedule</Link><Link href="/admin/import">Data Import</Link></div></details></>}
+                {publicView ? <><Link href="/scoreboard">Scoreboard</Link><Link href="/draft/board">Draft Board</Link></> : <><Link href="/">Home</Link><Link href="/matchup">Matchup</Link><Link href="/scoreboard">Scoreboard</Link><details className="nav-more"><summary>Players</summary><div className="nav-more-menu"><PositionRosterNav players={rosterNavPlayers} /></div></details><details className="nav-more"><summary>Draft</summary><div className="nav-more-menu"><Link href="/draft/players">Player Focus</Link><Link href="/compare">Compare Players</Link><Link href="/draft/board">Draft Board</Link></div></details><details className="nav-more"><summary>Admin</summary><div className="nav-more-menu"><Link href="/admin/draft">Draft Setup</Link><Link href="/admin/weeks">Season Schedule</Link><Link href="/admin/import">Data Import</Link></div></details></>}
               </div>
             </nav>
             <div className="header-actions">
-              <AccountMenu member={member} />
+              {!publicView && <AccountMenu member={member} />}
             </div>
           </header>
           <main>{children}</main>
           <footer className="site-footer">
             <span>Data refresh: matchups every 5 minutes, game stats daily.</span>
-            <span>{publicOnly ? "Public draft board · Research reserved for Andrew and Sam." : "Andrew and Sam’s fantasy basketball workspace."}</span>
+            <span>{publicView ? "Public scoreboard and draft board · Research reserved for Andrew and Sam." : "Andrew and Sam’s fantasy basketball workspace."}</span>
           </footer>
         </div>
       </body>

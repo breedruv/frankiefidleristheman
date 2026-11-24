@@ -14,12 +14,17 @@ test('only verified Supabase accounts with admin-assigned member names can own l
   assert.equal(memberName({ email: 'other@example.com', email_confirmed_at: 'today', user_metadata: { member_name: 'Andrew' } }), null);
   assert.equal(memberName({ email: 'other@example.com', email_confirmed_at: 'today', app_metadata: { member_name: 'Other' } }), null);
 });
-test('development reads remain open, list data and writes require membership', () => {
-  assert.equal(requiresMember('/draft/players', 'GET', false), false);
+test('only the public scoreboard and draft board can be read without membership', () => {
+  for (const path of ['/draft/players', '/compare', '/matchup', '/admin/draft', '/players/5239838', '/api/player-detail']) {
+    assert.equal(requiresMember(path, 'GET', false), true);
+  }
+  for (const path of ['/', '/scoreboard', '/draft/board', '/api/live-stats', '/api/draft-picks', '/api/draft-config']) {
+    assert.equal(requiresMember(path, 'GET', false), false);
+  }
+  assert.equal(requiresMember('/scoreboard', 'GET', true), true);
   assert.equal(requiresMember('/api/shortlists', 'GET', false), true);
   assert.equal(requiresMember('/api/draft-picks', 'POST', false), true);
   assert.equal(requiresMember('/admin/import', 'POST', false), true);
-  assert.equal(requiresMember('/admin/weeks', 'POST', true), true);
 });
 test('sign-in and sign-out endpoints can establish or clear a session', () => {
   assert.equal(requiresMember('/api/auth', 'POST', false), false);
