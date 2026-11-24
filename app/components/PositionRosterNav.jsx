@@ -31,7 +31,7 @@ export default function PositionRosterNav({ players = [] }) {
       grouped[key].push(player);
     });
     Object.values(grouped).forEach((list) =>
-      list.sort((a, b) => (a.label || "").localeCompare(b.label || ""))
+      list.sort((a, b) => Number(a.pickNumber) - Number(b.pickNumber))
     );
     return grouped;
   }, [players]);

@@ -10,6 +10,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabase, hasSupabase } from "../../lib/supabase";
+import { normalizeTeam } from "../../lib/draftRules.mjs";
 import RosterGroup from "../components/RosterGroup";
 import LineupSelector from "../components/LineupSelector";
 
@@ -151,7 +152,6 @@ const getLockedPlayerIds = (games) => {
 };
 
 export default async function MatchupPage({ searchParams }) {
-  const teamId = 2;
   const resolvedSearchParams = await searchParams;
   const season = Number(resolvedSearchParams?.season) || new Date().getFullYear();
   const seasonType =
@@ -167,6 +167,7 @@ export default async function MatchupPage({ searchParams }) {
   const selectedWeek = weekOptions.find((week) => week.week === selectedWeekNumber) || null;
   const matchups = await getFantasyMatchups(season, seasonType);
   const fantasyTeams = await getFantasyTeams();
+  const teamId = fantasyTeams.find((team) => normalizeTeam(team.short_code) === "AS")?.fantasy_team_id ?? null;
   const ncaaTeams = await getNcaaTeams();
   const teamAbbrById = new Map(
     ncaaTeams.map((team) => [
@@ -185,7 +186,7 @@ export default async function MatchupPage({ searchParams }) {
     ? teamNameById.get(currentMatchup.opponent_fantasy_team_id) ?? `Team ${currentMatchup.opponent_fantasy_team_id}`
     : null;
 
-  const roster = await getFantasyRoster({ teamId });
+  const roster = teamId ? await getFantasyRoster({ teamId }) : [];
   const centers = roster.filter((player) => normalizePosition(player.player_position) === "C");
   const forwards = roster.filter((player) => normalizePosition(player.player_position) === "F");
   const guards = roster.filter((player) => normalizePosition(player.player_position) === "G");

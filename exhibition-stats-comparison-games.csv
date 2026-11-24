@@ -1,0 +1,76 @@
+﻿game_id,game_date,team_a,team_b,source_url,source_status,workbook_players,source_players,matched_players,matching_players,players_with_differences,differing_stat_fields,compared_stat_fields,close_name_matches,unmatched_source_rows,workbook_only
+G01,2026-09-27,Vanderbilt,Virginia,https://drive.google.com/file/d/1d_gWaOCjQxKTXXG-jTTQc7DPK7RrD-Se/view,No player rows parsed from Webpage,33,0,0,0,0,0,0,0,0,33
+G02,2026-10-02,Michigan State,Incarnate Word,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/msuspartans.com/stats/mbball/2026/pdf/20261005015628-2930441.pdf,Fetched PDF,14,25,14,14,0,0,224,0,11,0
+G03,2026-10-04,Georgetown,Wake Forest,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/guhoyas.com/documents/2026/10/4/EXH_01_-_at_Wake_Forest.pdf,Fetched PDF,24,24,24,24,0,0,456,0,0,0
+G04,2026-10-07,Cincinnati,Ohio State,https://s3.us-east-2.amazonaws.com/sidearm.nextgen.sites/ohiostatebuckeyes.com/documents/2026/10/7/Ohio_State_vs._Cincinnati_10-7-26.pdf?timestamp=20261007101615,No player rows parsed from PDF,24,0,0,0,0,0,0,0,0,24
+G05,2026-10-07,Xavier,Dayton,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/udayton.sidearmsports.com/documents/2026/10/7/2924461.PDF,Fetched PDF,11,23,11,11,0,0,209,0,12,0
+G06,2026-10-07,Georgia,Georgia State,https://georgiadogs.com/news/2026/10/7/mens-basketball-bulldogs-blow-by-panthers-in-preseason-opener,No player rows parsed from Webpage,0,0,0,0,0,0,0,0,0,0
+G07,2026-10-07,Murray State,Wichita State,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/wichita.sidearmsports.com/stats/m_bkb/2026/pdf/20261007084407-2934349.pdf,Fetched PDF,11,21,11,11,0,0,176,0,10,0
+G08,2026-10-07,Utah,UNLV,https://unlvrebels.com/sports/mens-basketball/stats/2026-27/utah-exhibition-/boxscore/17947,Fetched Webpage,11,20,11,11,0,0,176,0,9,0
+G09,2026-10-08,Duke,Belmont,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/goduke.com/stats/mbball/2026/pdf/20261008085345-Duke%20MBB%20vs.%20Belmont.pdf,Fetched PDF,11,23,11,11,0,0,176,0,12,0
+G10,2026-10-08,Alabama,Furman,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/furmanpaladins.com/stats/mbball/2026/pdf/20261008085456-2924328.pdf,Fetched PDF,9,20,9,9,0,0,144,0,11,0
+G11,2026-10-08,LSU,McNeese,https://static.lsusports.net/assets/docs/mb/27stats/lsu01exh.pdf,Fetched PDF,7,16,6,6,0,0,114,0,10,1
+G12,2026-10-09,North Carolina,USC,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/unc.sidearmsports.com/stats/mbball/2026/pdf/20261009085454-2913019.pdf,Fetched PDF,24,24,24,24,0,0,384,0,0,0
+G13,2026-10-09,Virginia,Richmond,https://static.virginiasports.com/custompages/sports/m-baskbl/stats/2026-27/Virginia%2096%2C%20Richmond%2053.pdf,No player rows parsed from PDF,15,0,0,0,0,0,0,0,0,15
+G14,2026-10-09,Saint Louis,Nebraska,https://storage.googleapis.com/huskers-com-prod/2026/10/10/xEGJu4H1X9iwr06FP8aFxl0YjGRG3jjOkZ6kq2fw.pdf,Fetched PDF,13,27,13,13,0,0,247,0,14,0
+G15,2026-10-10,Wisconsin,UW-Parkside,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/uwbadgers.com/stats/mbball/2026/pdf/20261010022346-2932580.pdf,Fetched PDF,12,27,12,12,0,0,192,0,15,0
+G16,2026-10-11,Villanova,Rutgers,https://scarletknights.com/sports/mens-basketball/stats/2026-27/villanova/boxscore/16506,Fetched Webpage,21,21,21,21,0,0,336,0,0,0
+G17,2026-10-11,Michigan,Eastern Michigan,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/emueagles.com/stats/mbball/2026/pdf/20261011032415-2921490.pdf,Fetched PDF,11,22,11,11,0,0,176,0,11,0
+G18,2026-10-11,New Mexico,Oklahoma State,https://okstate.com/sports/mens-basketball/stats/2026-27/new-mexico/boxscore/17593,Fetched Webpage,11,22,11,11,0,0,176,0,11,0
+G19,2026-10-11,Maryland,Georgia Tech,https://umterps.com/sports/mens-basketball/stats/2026-27/georgia-tech-exh-/boxscore/22455,Fetched Webpage,25,25,25,25,0,0,400,0,0,0
+G20,2026-10-11,Indiana,Butler,https://iuhoosiers.com/documents/2026/10/12/IU_96__BUT_68_Final_Box.pdf,Fetch/parse error: PdfminerException: No /Root object! - Is this really a PDF?,27,0,0,0,0,0,0,0,0,27
+G21,2026-10-13,Connecticut,Syracuse,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/suathletics.com/stats/mbasket/2026/pdf/20261013082506-2926293.pdf,Fetched PDF,25,25,25,25,0,0,400,0,0,0
+G22,2026-10-13,Arizona,San Francisco,https://s3.us-east-2.amazonaws.com/sidearm.nextgen.sites/arizona.sidearmsports.com/documents/2026/10/14/2902327.PDF?timestamp=20261014041359,Fetched PDF,14,24,14,14,0,0,266,0,10,0
+G23,2026-10-14,St. John's,Drexel,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/redstormsports.com/stats/mbball/2026/pdf/20261014073447-2914069.pdf,Fetched PDF,14,27,14,14,0,0,224,0,13,0
+G24,2026-10-14,Florida State,Auburn,https://storage.googleapis.com/auburn-prod/2026/10/15/jSrSMFKlGyTcPqJrAAJ46rLulZKH3wWGWH3Cn1ef.pdf,Fetched PDF,22,22,21,21,0,0,399,1,1,1
+G25,2026-10-14,LSU,UCF,https://static.lsusports.net/assets/docs/mb/27stats/lsu02exh.pdf,Fetched PDF,19,19,19,19,0,0,361,0,0,0
+G26,2026-10-15,South Carolina,Wake Forest,https://s3.us-east-2.amazonaws.com/sidearm.nextgen.sites/wakeforestsports.com/documents/2026/10/16/2902487.PDF?timestamp=20261016122149,Fetched PDF,20,20,20,20,0,0,380,0,0,0
+G27,2026-10-15,Xavier,Tennessee,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/utsports.com/stats/mbball/2026/pdf/20261015082625-10-15-26.pdf,Fetched PDF,24,24,24,24,0,0,384,0,0,0
+G28,2026-10-15,Wisconsin,Green Bay,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/uwbadgers.com/stats/mbball/2026/pdf/20261015092500-2932579.pdf,Fetched PDF,13,24,13,13,0,0,207,0,11,0
+G29,2026-10-15,Alabama,Ole Miss,https://s3.us-east-2.amazonaws.com/sidearm.nextgen.sites/rolltide.com/documents/2026/10/16/Exhibition_Ole_Miss_2627.PDF?timestamp=20261016035312,Fetched PDF,19,19,19,19,0,0,361,0,0,0
+G30,2026-10-15,Houston,Montana Tech,https://s3.us-east-2.amazonaws.com/sidearm.nextgen.sites/uhcougars.com/documents/2026/10/16/2914001.PDF?timestamp=20261016031120,Fetched PDF,13,29,13,13,0,0,247,0,16,0
+G31,2026-10-15,Minnesota,Omaha,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/nebomaha.sidearmsports.com/stats/mbball/2026/pdf/20261015090438-2920785.pdf,Fetched PDF,14,28,14,14,0,0,224,0,14,0
+G32,2026-10-15,Seattle U,Oregon,https://s3.us-east-2.amazonaws.com/sidearm.nextgen.sites/uoregon.sidearmsports.com/documents/2026/10/16/2925837.PDF?timestamp=20261016044003,Fetched PDF,10,22,10,10,0,0,190,0,12,0
+G33,2026-10-16,Virginia Tech,Wofford,https://sports.yahoo.com/articles/young-return-wofford-brought-special-012026686.html,Fetch/parse error: HTTPError: 429 Client Error: Too Many Requests for url: https://www.yahoo.com/news/articles/young-return-wofford-brought-special-012026686.html,0,0,0,0,0,0,0,0,0,0
+G34,2026-10-16,Georgetown,George Washington,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/gwsports.com/stats/mbball/2026/pdf/20261016081925-2919039.pdf,Fetched PDF,11,23,11,11,0,0,176,1,12,0
+G35,2026-10-16,Georgia,Charlotte,https://georgiadogs.com/news/2026/10/16/mens-basketball-bulldogs-defeat-49ers-in-preseason-matchup,No player rows parsed from Webpage,0,0,0,0,0,0,0,0,0,0
+G36,2026-10-16,Kentucky,Little Rock,https://storage.googleapis.com/ukathletics-com/2026/10/12389d28-uk_lr_book_101626.pdf,Fetched PDF,11,25,11,11,0,0,209,0,14,0
+G37,2026-10-16,Michigan,Oregon State,https://s3.us-east-2.amazonaws.com/sidearm.nextgen.sites/mgoblue.com/documents/2026/10/17/20261016-bkm-oregon-state.pdf?timestamp=20261017012841,Fetched PDF,11,23,11,11,0,0,209,0,12,0
+G38,2026-10-16,Kansas,Pittsburg State,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/ukansas.sidearmsports.com/stats/mbball/2026/pdf/20261016091411-2932620.pdf,Fetched PDF,15,30,15,15,0,0,240,0,15,0
+G39,2026-10-16,California,LMU,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/calberk.sidearmsports.com/stats/mbball/2026/pdf/20261016103728-1016LMUexh.pdf,Fetched PDF,12,22,12,12,0,0,192,1,10,0
+G40,2026-10-16,BYU,Nebraska,https://storage.googleapis.com/byucougars-prod/2026/10/17/7lsSVYbeKhZgli2xqkn7N6ESwxGjx92PjjJreQUQ.pdf,Fetched PDF,22,22,22,22,0,0,418,0,0,0
+G41,2026-10-16,Arizona,San Diego State,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/arizona.sidearmsports.com/stats/mbball/2026/pdf/20261016111707-2902328.pdf,Fetched PDF,10,20,10,10,0,0,160,0,10,0
+G42,2026-10-17,Villanova,George Mason,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/georgemason.sidearmsports.com/stats/mbball/2026/pdf/20261017021844-2934309.pdf,Fetched PDF,12,24,12,12,0,0,192,0,12,0
+G43,2026-10-17,Providence,Pittsburgh,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/friars.com/stats/mbball/2026/pdf/20261017031729-2914298.pdf,Fetched PDF,21,21,21,21,0,0,336,0,0,0
+G44,2026-10-17,Nevada,Utah,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/nevadawolfpack.com/stats/mbball/2026/pdf/20261017055943-2921034.pdf,Fetched PDF,9,23,9,9,0,0,144,0,14,0
+G45,2026-10-17,Penn State,St. Bonaventure,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/gobonnies.sbu.edu/documents/2026/10/17/2916594.PDF,Fetched PDF,9,20,9,9,0,0,171,0,11,0
+G46,2026-10-17,TCU,Wyoming,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/gofrogs.com/stats/mbball/2026/pdf/20261017032603-boxscore_20261017_0420.pdf,Fetched PDF,12,23,12,12,0,0,192,0,11,0
+G47,2026-10-17,Illinois,Cincinnati,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/fightingillini.com/stats/mbball/2026/pdf/20261017061756-2933710.pdf,Fetched PDF,22,22,22,22,0,0,352,0,0,0
+G48,2026-10-17,Dayton,Notre Dame,https://storage.googleapis.com/fightingirish-com/2026/10/18/HiON60Y5uJvAhVMOf3cj9ODf1x3vrqxIqRMB3jCi.pdf,Fetched PDF,13,23,13,13,0,0,247,0,10,0
+G49,2026-10-17,Boise State,Washington,https://s3.us-east-2.amazonaws.com/sidearm.nextgen.sites/broncosports.com/documents/2026/10/18/101726_Washington.PDF?timestamp=20261018040018,Fetched PDF,12,23,12,12,0,0,228,0,11,0
+G50,2026-10-17,Santa Clara,Stanford,https://storage.googleapis.com/stanford-prod/2026/10/18/aK3H5Is7bErX9vrrChAGiwscqOATi2ggdkLwSI8n.pdf,Fetched PDF,12,21,12,12,0,0,228,0,9,0
+G51,2026-10-17,USC,UC San Diego,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/usctrojans.com/stats/mbball/2026/pdf/20261017113102-2912878.pdf,Fetched PDF,11,22,11,11,0,0,176,0,11,0
+G52,2026-10-18,St. John's,Rutgers,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/scarletknights.com/stats/mbball/2026/pdf/20261018022905-2914071.pdf,Fetched PDF,21,21,21,21,0,0,336,0,0,0
+G53,2026-10-18,Creighton,Iowa State,https://s3.us-east-2.amazonaws.com/sidearm.nextgen.sites/isuni.sidearmsports.com/documents/2026/10/18/EX1_-_Creighton_-_Copy.PDF?timestamp=20261018073552,Fetched PDF,20,20,20,20,0,0,380,0,0,0
+G54,2026-10-18,DePaul,Loyola Chicago,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/depaulbluedemons.com/stats/mbball/2026/pdf/20261018040000-2936219.pdf,Fetched PDF,11,23,11,11,0,0,176,0,12,0
+G55,2026-10-18,Purdue,Ball State,https://storage.googleapis.com/purduesports-com-prod/2026/10/18/BZCWCKMmV2mOcrdmgiZ0084En1uLgKuUed9Ms0Ho.pdf,Fetched PDF,11,21,11,11,0,0,209,0,10,0
+G56,2026-10-18,Baylor,Florida,https://s3.us-east-2.amazonaws.com/sidearm.nextgen.sites/baylorbears.com/documents/2026/10/18/BU_MBB_EXH1_Florida_2627.PDF?timestamp=20261018090006,Fetched PDF,18,18,18,18,0,0,342,0,0,0
+G57,2026-10-18,Syracuse,Siena,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/suathletics.com/stats/mbasket/2026/pdf/20261018032357-2926294.pdf,Fetched PDF,10,19,10,10,0,0,160,0,9,0
+G58,2026-10-18,Colorado,North Texas,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/meangreensports.com/stats/mbball/2026/pdf/20261018040615-2927478.pdf,Fetched PDF,19,19,19,19,0,0,304,0,0,0
+G59,2026-10-18,Maryland,West Virginia,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/umterps.com/stats/mbball/2026/pdf/20261018052635-2908229.pdf,Fetched PDF,20,20,20,20,0,0,320,0,0,0
+G60,2026-10-18,NC State,Mississippi State,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/gopack.com/stats/mbball/2026/pdf/20261018060528-2937707.pdf,Fetched PDF,20,20,20,20,0,0,320,0,0,0
+G61,2026-10-18,Illinois State,Northwestern,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/goredbirds.com/stats/mbball/2026/pdf/20261018061614-2912445.pdf,Fetched PDF,10,20,10,10,0,0,160,0,10,0
+G62,2026-10-18,Indiana,North Carolina,https://s3.us-east-2.amazonaws.com/sidearm.nextgen.sites/unc.sidearmsports.com/documents/2026/10/18/OOB-Indiana.PDF?timestamp=20261018113446,Fetched PDF,22,22,22,22,0,0,418,0,0,0
+G63,2026-10-18,Butler,Indiana State,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/butler.sidearmsports.com/documents/2026/10/18/2026-27_Butler_MBB___Indiana_State_-_small_Book___10182026.PDF,Fetched PDF,12,24,12,12,0,0,228,0,12,0
+G64,2026-10-19,South Florida,Saint Leo,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/usf.sidearmsports.com/stats/mbball/2026/pdf/20261019084746-2941328.pdf,Fetched PDF,13,27,13,13,0,0,208,0,14,0
+G65,2026-10-19,Vanderbilt,UAB,https://sports.yahoo.com/articles/team-stats-player-point-totals-021600669.html,No player rows parsed from Webpage,0,0,0,0,0,0,0,0,0,0
+G66,2026-10-19,Marquette,Green Bay,https://dxbhsrqyrr690.cloudfront.net/sidearm.nextgen.sites/uwgreen.sidearmsports.com/stats/mbball/2026/pdf/20261019085519-2920515.pdf,Fetched PDF,12,27,12,12,0,0,192,0,15,0
+G67,2026-10-20,Duke,Tennessee,https://goduke.com/sports/mens-basketball/stats/2026-27/tennessee/boxscore/25737,Fetched Webpage,27,27,27,27,0,0,432,0,0,0
+G68,2026-10-20,Uconn,Michigan St. ,https://uconnhuskies.com/sports/mens-basketball/stats/2026-27/michigan-state/boxscore/25872,Fetched Webpage,21,21,21,9,12,14,336,0,0,0
+G69,2026-10-21,Florida Atlantic,Keiser,https://fausports.com/sports/mens-basketball/stats/2026-27/keiser-exhibition-/boxscore/24758,Fetched Webpage,12,27,11,11,0,0,176,1,16,1
+G70,2026-10-21,Louisville,Kansas,https://kuathletics.com/sports/mens-basketball/stats/2026-27/louisville-exhibition-/boxscore/20678,Fetched Webpage,21,21,21,21,0,0,336,0,0,0
+G71,2026-10-21,Utah,Oregon,https://goducks.com/sports/mens-basketball/stats/2026-27/utah/boxscore/24691,Fetched Webpage,20,20,20,20,0,0,320,0,0,0
+G72,2026-10-21,UCLA,California Baptist,https://storage.googleapis.com/uclabruins-com-prod/2026/10/22/wLNBBt73ukzijegxxw2NuKTcYI5Ug7Ek7STvBR8t.pdf,No player rows parsed from PDF,14,0,0,0,0,0,0,0,0,14
+G73,2026-10-22,Purdue,Purdue Fort Wayne,https://purduesports.com/boxscore/16888,No player rows parsed from Webpage,16,0,0,0,0,0,0,0,0,16
+G74,2026-10-22,Virginia,Villanova,"https://static.virginiasports.com/custompages/sports/m-baskbl/stats/2026-27/virginia%2093,%20villanova%2071.pdf",Fetched PDF,25,25,25,17,8,9,400,1,0,0
+G75,2026-10-22,Alabama,Auburn,https://rolltide.com/sports/mens-basketball/stats/2026-27/auburn/boxscore/22040,Fetched Webpage,19,19,19,19,0,0,304,0,0,0

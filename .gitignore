@@ -10,3 +10,9 @@ __pycache__/
 2026_cbb_plays.csv
 player stats.csv
 roster.csv
+data/exhibition-pdfs/
+logs/
+.cache/
+
+.vercel
+.env*

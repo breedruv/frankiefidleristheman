@@ -1,32 +1,37 @@
-def team_rosterCBS(url):
-    # Fetch the HTML content
-    response = requests.get(url)
-    html_content = response.content
+"""Parse a CBS Sports team roster page (cbssports.com/college-basketball/teams/{CODE}/{slug}/roster/)."""
+import re
 
-    # Parse the HTML content
-    soup = BeautifulSoup(html_content, 'html.parser')
+from bs4 import BeautifulSoup
 
-    # Get all elements with the class name 'TableBase-table'
-    table_elements = soup.find_all(class_='TableBase-table')
+CBS_BASE = "https://www.cbssports.com"
 
-    # Initialize a list to store the text content of table rows
-    table_rows_text = []
 
-    # Iterate through each table element and extract the rows
-    for table in table_elements:
-        rows = table.find_all('tr')
-        for row in rows:
-            row_text = []
-            cells = row.find_all('td')
-            for cell in cells:
-                cell_text = cell.get_text(strip=True)
-                subnodes = cell.find_all(recursive=False)
-                if subnodes:
-                    for subnode in subnodes:
-                        row_text.append(subnode.get_text(strip=True))
-                else:
-                    row_text.append(cell_text)
-            table_rows_text.append(row_text)
-
-    # Print the text content of table rows
-    return table_rows_text
+def parse_cbs_roster(html):
+    soup = BeautifulSoup(html, "html.parser")
+    players = []
+    for table in soup.find_all(class_="TableBase-table"):
+        headers = [th.get_text(" ", strip=True).upper() for th in table.find_all("th")]
+        if "PLAYER" not in headers:
+            continue
+        for row in table.find_all("tr"):
+            cells = row.find_all("td")
+            if len(cells) != len(headers):
+                continue
+            values = dict(zip(headers, cells))
+            name_cell = values["PLAYER"]
+            link = (name_cell.select_one(".CellPlayerName--long a") or name_cell.find("a"))
+            href = link.get("href") if link else ""
+            match = re.search(r"/players/(\d+)/", href or "")
+            text = lambda key: values[key].get_text(" ", strip=True) if key in values else ""
+            players.append({
+                "source_player_id": match.group(1) if match else "",
+                "source_player_url": f"{CBS_BASE}{href}" if href else "",
+                "jersey": text("NO"),
+                "name": link.get_text(" ", strip=True) if link else text("PLAYER"),
+                "position": text("POS"),
+                "height": text("HT"),
+                "weight": text("WT"),
+                "class": text("CLASS"),
+                "hometown": text("HOMETOWN"),
+            })
+    return players

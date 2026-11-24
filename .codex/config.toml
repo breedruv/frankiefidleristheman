@@ -6,6 +6,10 @@ enabled = true
 [plugins."ponytail@ponytail"]
 enabled = true
 
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 3
+
 [plugins."diagram-design@diagram-design"]
 enabled = false
 

@@ -1,6 +1,10 @@
 import { revalidatePath } from "next/cache";
 import { getFantasyMatchups, getFantasyTeams, getFantasyWeekOptions } from "../../../lib/queries";
 import { supabase, hasSupabase } from "../../../lib/supabase";
+import { currentMember } from "../../../lib/auth";
+import { draftOrders, normalizeTeam } from "../../../lib/draftRules.mjs";
+import { buildRegularSeasonMatchups } from "../../../lib/regularSeasonSchedule.mjs";
+import { seasonCalendar } from "../../../lib/seasonCalendar.mjs";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +21,7 @@ const formatDate = (value) => {
 
 async function addWeeks(formData) {
   "use server";
-  if (!hasSupabase || !supabase) {
+  if (!await currentMember() || !hasSupabase || !supabase) {
     return;
   }
 
@@ -104,7 +108,7 @@ async function addWeeks(formData) {
 
 async function deleteWeek(formData) {
   "use server";
-  if (!hasSupabase || !supabase) {
+  if (!await currentMember() || !hasSupabase || !supabase) {
     return;
   }
   const season = Number(formData.get("season"));
@@ -125,7 +129,7 @@ async function deleteWeek(formData) {
 
 async function upsertMatchup(formData) {
   "use server";
-  if (!hasSupabase || !supabase) {
+  if (!await currentMember() || !hasSupabase || !supabase) {
     return;
   }
   const season = Number(formData.get("season"));
@@ -154,7 +158,7 @@ async function upsertMatchup(formData) {
 
 async function deleteMatchup(formData) {
   "use server";
-  if (!hasSupabase || !supabase) {
+  if (!await currentMember() || !hasSupabase || !supabase) {
     return;
   }
   const season = Number(formData.get("season"));
@@ -171,6 +175,43 @@ async function deleteMatchup(formData) {
     .eq("season_type", seasonType)
     .eq("week", week)
     .eq("fantasy_team_id", fantasyTeamId);
+  revalidatePath("/admin/weeks");
+}
+
+async function seed2026Schedule() {
+  "use server";
+  if (!await currentMember() || !hasSupabase || !supabase) return;
+
+  const season = 2026;
+  const [{ data: config, error: configError }, { data: teams, error: teamsError }] = await Promise.all([
+    supabase.from("draft_configurations").select("snake_order").eq("season", season).maybeSingle(),
+    supabase.from("fantasy_teams").select("fantasy_team_id,short_code")
+  ]);
+  if (configError || teamsError || !config?.snake_order?.length) return;
+
+  const snake = draftOrders(config.snake_order).snake;
+  const teamIdByCode = new Map(teams.map((team) => [normalizeTeam(team.short_code), team.fantasy_team_id]));
+  if (snake.some((team) => !teamIdByCode.has(team))) return;
+
+  const regularMatchups = buildRegularSeasonMatchups(snake).map((matchup) => ({
+    season,
+    season_type: "regular",
+    week: matchup.week,
+    fantasy_team_id: teamIdByCode.get(matchup.team_code),
+    opponent_fantasy_team_id: teamIdByCode.get(matchup.opponent_team_code)
+  }));
+  const openingTournamentMatchups = [[0, 1], [2, 3], [4, 5], [6, 7]].flatMap(([one, two]) => [
+    { season, season_type: "christmas", week: 1, fantasy_team_id: teamIdByCode.get(snake[one]), opponent_fantasy_team_id: teamIdByCode.get(snake[two]) },
+    { season, season_type: "christmas", week: 1, fantasy_team_id: teamIdByCode.get(snake[two]), opponent_fantasy_team_id: teamIdByCode.get(snake[one]) }
+  ]);
+
+  await supabase.from("fantasy_weeks").upsert(seasonCalendar(season), { onConflict: "season,season_type,week" });
+  await supabase.from("fantasy_matchups").upsert([...regularMatchups, ...openingTournamentMatchups], {
+    onConflict: "season,season_type,week,fantasy_team_id"
+  });
+  revalidatePath("/");
+  revalidatePath("/scoreboard");
+  revalidatePath("/matchup");
   revalidatePath("/admin/weeks");
 }
 
@@ -192,6 +233,13 @@ export default async function AdminWeeksPage({ searchParams }) {
           <h2>Week Schedule Admin</h2>
           <span className="section-subtitle">Define custom week start/end dates for the season.</span>
         </div>
+        <form className="card" action={seed2026Schedule}>
+          <strong>2026–27 schedule</strong>
+          <p>Loads the confirmed calendar, Jeff Crose Memorial opening round, and regular-season Weeks 1–14 from the current Draft Admin snake order. Week 15, playoffs, and later tournament rounds remain manual because results determine them.</p>
+          <div style={{ marginTop: "1rem" }}>
+            <button className="solid-pill" type="submit">Load 2026–27 Schedule</button>
+          </div>
+        </form>
         <form className="card" action={addWeeks}>
           <input type="hidden" name="row_count" value={DEFAULT_ROW_COUNT} />
           <div className="filters">

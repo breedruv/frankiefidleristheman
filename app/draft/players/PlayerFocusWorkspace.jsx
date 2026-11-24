@@ -1,14 +1,15 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
 import PlayerFocusTable, { POOL_COLUMNS } from './PlayerFocusTable';
 import { sortPlayers } from '../../../lib/playerSort.mjs';
+import { overlayExhibitionStats } from '../../../lib/exhibitionStats.mjs';
+import AvailabilityBadge from '../../components/AvailabilityBadge';
 
-const defaultColumns = ['team_name', 'position', 'year', 'ppg', 'mpg', 'three_pct', 'ft_pct', 'shots_per_game', 'prev_starts', 'prev_ppg', 'prev_last5_ppg'];
+const defaultColumns = ['team_name', 'kenpom_rank', 'position', 'year', 'games', 'ppg', 'mpg', 'three_pct', 'ft_pct', 'shots_per_game', 'prev_starts', 'prev_ppg', 'prev_last5_ppg', 'lindys_top150_rank'];
 const columnStorageKey = 'player-focus-columns';
 
-export default function PlayerFocusWorkspace({ players, pool, draftedPlayerIds, member, hideDrafted, statsMode = 'regular' }) {
+export default function PlayerFocusWorkspace({ players, combinedPlayerIds, combinedStats, pool, draftedPlayerIds, member, hideDrafted, includeExhibitions = false }) {
   const [lists, setLists] = useState(['Andrew', 'Sam'].map((owner) => ({ owner_name: owner, player_ids: [], revision: 0 })));
   const [drafted, setDrafted] = useState(draftedPlayerIds);
   const [ready, setReady] = useState(false);
@@ -18,17 +19,18 @@ export default function PlayerFocusWorkspace({ players, pool, draftedPlayerIds, 
   const [retry, setRetry] = useState(0);
   const [sort, setSort] = useState({ key: 'ppg', direction: 'desc' });
   const [columns, setColumns] = useState(defaultColumns);
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const [combined, setCombined] = useState(includeExhibitions);
+  const statsMode = combined ? 'combined' : 'regular';
   const byId = new Map(pool.map((player) => [Number(player.player_id), player]));
   const mine = lists.find((list) => list.owner_name === member);
-  const available = sortPlayers(hideDrafted ? players.filter((p) => !drafted.includes(Number(p.player_id))) : players, sort.key, sort.direction);
-  function modeHref(mode) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (mode === 'regular') params.delete('stats');
-    else params.set('stats', mode);
-    const query = params.toString();
-    return query ? `${pathname}?${query}` : pathname;
+  const activePlayers = combined ? combinedPlayerIds.map((id) => overlayExhibitionStats(byId.get(id), combinedStats[id])) : players;
+  const available = sortPlayers(hideDrafted ? activePlayers.filter((p) => !drafted.includes(Number(p.player_id))) : activePlayers, sort.key, sort.direction);
+  function toggleExhibitions(checked) {
+    setCombined(checked);
+    const url = new URL(window.location.href);
+    if (checked) url.searchParams.set('stats', 'combined');
+    else url.searchParams.delete('stats');
+    window.history.replaceState(null, '', url);
   }
   useEffect(() => {
     try {
@@ -108,14 +110,14 @@ export default function PlayerFocusWorkspace({ players, pool, draftedPlayerIds, 
           const name = player ? `${player.first_name || ''} ${player.last_name || ''}`.trim() : `Player ${id}`;
           const isDrafted = drafted.includes(Number(id));
           return <li key={id} className={isDrafted ? 'shortlist-drafted' : ''}>
-            <span className="shortlist-rank">{index + 1}</span><span className="shortlist-avatar">{player?.headshot ? <img src={player.headshot} alt="" /> : '?'}</span><div className="shortlist-player"><strong>{name}</strong><small>{player?.position} · {player?.team_name || 'Outside current pool'}{isDrafted ? ' · Drafted' : ''}</small></div>
+            <span className="shortlist-rank">{index + 1}</span><span className="shortlist-avatar">{player?.headshot ? <img src={player.headshot} alt="" /> : '?'}</span><div className="shortlist-player"><strong>{name} <AvailabilityBadge availability={player?.availability} /></strong><small>{player?.position} · {player?.team_name || 'Outside current pool'}{isDrafted ? ' · Drafted' : ''}</small></div>
             {member === list.owner_name && <div className="shortlist-actions"><button type="button" disabled={busy || index === 0} aria-label={`Move ${name} up`} onClick={() => move(index, -1)}>↑</button><button type="button" disabled={busy || index === list.player_ids.length - 1} aria-label={`Move ${name} down`} onClick={() => move(index, 1)}>↓</button><button type="button" disabled={busy} aria-label={`Remove ${name}`} onClick={() => save(mine.player_ids.filter((value) => value !== id))}>×</button></div>}
           </li>;
         })}</ol>}
       </section>)}</div>
     </aside>
-    <section className="card player-pool-panel"><div className="section-title"><div><h2>Player pool</h2><span className="section-subtitle">{available.length} matching players · Select a name for recent games</span></div><nav className="draft-stats-toggle" aria-label="Stats game type"><Link href={modeHref('regular')} aria-current={statsMode === 'regular' ? 'page' : undefined} className={statsMode === 'regular' ? 'active' : ''}>Regular season</Link><Link href={modeHref('exhibition')} aria-current={statsMode === 'exhibition' ? 'page' : undefined} className={statsMode === 'exhibition' ? 'active' : ''}>Exhibitions</Link></nav><details className="player-columns-menu"><summary>Columns</summary><fieldset><legend>Player is always shown</legend>{POOL_COLUMNS.map(({ key, label }) => <label key={key}><input type="checkbox" checked={columns.includes(key)} onChange={() => toggleColumn(key)} />{label}</label>)}</fieldset></details></div>
-      <PlayerFocusTable players={available.slice(0, visible)} columns={columns} sort={sort} statsMode={statsMode} onSort={(key) => setSort((current) => ({ key, direction: current.key === key && current.direction === 'desc' ? 'asc' : 'desc' }))} draftedPlayerIds={drafted} member={member} shortlistIds={mine?.player_ids || []} canAdd={!!member && ready && !busy && mine?.player_ids.length < 10} onAdd={(id) => save([...mine.player_ids, id])} />
+    <section className="card player-pool-panel"><input type="hidden" name="stats" value={combined ? 'combined' : ''} form="player-focus-filters" /><div className="section-title"><div><h2>Player pool</h2><span className="section-subtitle">{available.length} matching players · Select a name for recent games</span></div><label className="checkbox-label player-drafted-toggle"><input type="checkbox" checked={combined} onChange={(event) => toggleExhibitions(event.target.checked)} /> Include exhibitions in stats</label><details className="player-columns-menu"><summary>Columns</summary><fieldset><legend>Player is always shown</legend>{POOL_COLUMNS.map(({ key, label }) => <label key={key}><input type="checkbox" checked={columns.includes(key)} onChange={() => toggleColumn(key)} />{label}</label>)}</fieldset></details></div>
+      <PlayerFocusTable players={available.slice(0, visible)} columns={columns} sort={sort} statsMode={statsMode} onSort={(key) => setSort((current) => ({ key, direction: current.key === key ? (current.direction === 'desc' ? 'asc' : 'desc') : key.endsWith('_rank') ? 'asc' : 'desc' }))} draftedPlayerIds={drafted} member={member} shortlistIds={mine?.player_ids || []} canAdd={!!member && ready && !busy && mine?.player_ids.length < 10} onAdd={(id) => save([...mine.player_ids, id])} />
       {visible < available.length && <button className="ghost-pill load-more-players" type="button" onClick={() => setVisible((n) => n + 50)}>Show 50 more ({available.length - visible} remaining)</button>}
     </section>
   </div>;

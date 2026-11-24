@@ -48,11 +48,17 @@ CREATE TABLE IF NOT EXISTS games (
   home_team_name TEXT,
   away_team_id INTEGER,
   away_team_name TEXT,
-  status TEXT
+  status TEXT,
+  is_exhibition BOOLEAN NOT NULL DEFAULT FALSE,
+  source_game_label TEXT
 );
 
 ALTER TABLE games
   ADD COLUMN IF NOT EXISTS game_datetime TIMESTAMPTZ;
+ALTER TABLE games
+  ADD COLUMN IF NOT EXISTS is_exhibition BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE games
+  ADD COLUMN IF NOT EXISTS source_game_label TEXT;
 
 CREATE TABLE IF NOT EXISTS player_games (
   game_id INTEGER NOT NULL,
@@ -78,6 +84,108 @@ CREATE TABLE IF NOT EXISTS player_games (
   season INTEGER,
   PRIMARY KEY (game_id, player_id)
 );
+
+ALTER TABLE player_games
+  ADD COLUMN IF NOT EXISTS starter BOOLEAN;
+
+-- In-progress stats for lineup players only; rows are deleted once the final box score lands in player_games.
+CREATE TABLE IF NOT EXISTS live_player_games (
+  game_id INTEGER NOT NULL,
+  player_id INTEGER NOT NULL REFERENCES players(player_id),
+  game_date DATE,
+  team_id INTEGER,
+  pts INTEGER,
+  fgm INTEGER,
+  fga INTEGER,
+  tpm INTEGER,
+  tpa INTEGER,
+  ftm INTEGER,
+  fta INTEGER,
+  reb INTEGER,
+  ast INTEGER,
+  turnovers INTEGER,
+  stl INTEGER,
+  blocks INTEGER,
+  oreb INTEGER,
+  dreb INTEGER,
+  pf INTEGER,
+  minutes NUMERIC,
+  season INTEGER,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (game_id, player_id)
+);
+
+ALTER TABLE live_player_games ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS live_player_games_public_read ON live_player_games;
+CREATE POLICY live_player_games_public_read ON live_player_games FOR SELECT USING (true);
+
+-- One row per ESPN request from the live refresh, used to measure rate limits by endpoint and source (web vs pc).
+CREATE TABLE IF NOT EXISTS espn_request_log (
+  id BIGSERIAL PRIMARY KEY,
+  requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  source TEXT NOT NULL,
+  endpoint TEXT NOT NULL,
+  game_id INTEGER,
+  status INTEGER,
+  duration_ms INTEGER,
+  error TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_espn_request_log_time ON espn_request_log(requested_at);
+ALTER TABLE espn_request_log ENABLE ROW LEVEL SECURITY;
+
+-- Current injury listing per player and source ('rotowire' from the collector, 'manual' fallback). See db/collector.sql.
+CREATE TABLE IF NOT EXISTS player_injuries (
+  player_id INTEGER NOT NULL REFERENCES players(player_id),
+  source TEXT NOT NULL CHECK (source IN ('rotowire', 'manual')),
+  status TEXT,
+  injury TEXT,
+  source_player TEXT,
+  source_team TEXT,
+  updated_by TEXT,
+  first_reported_at TIMESTAMPTZ DEFAULT NOW(),
+  checked_at TIMESTAMPTZ DEFAULT NOW(),
+  cleared_at TIMESTAMPTZ,
+  PRIMARY KEY (player_id, source)
+);
+ALTER TABLE player_injuries ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS player_source_listings (
+  source TEXT NOT NULL CHECK (source IN ('cbs', 'yahoo', 'lindys')),
+  season INTEGER NOT NULL,                       -- ESPN source season (2027 = 2026-27)
+  source_key TEXT NOT NULL,                      -- source player id, or the file line for Lindy's
+  player_id INTEGER REFERENCES players(player_id),  -- ESPN id, or a negative stand-in id; null when unlinked
+  team_id INTEGER,
+  name TEXT NOT NULL,
+  jersey TEXT,
+  position TEXT,
+  height_in INTEGER,
+  weight INTEGER,
+  class TEXT,
+  hometown TEXT,
+  source_url TEXT,
+  match TEXT NOT NULL,                           -- exact, name, reviewed, stand_in, espn_id, unlinked
+  imported_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (source, season, source_key)
+);
+CREATE INDEX IF NOT EXISTS player_source_listings_player_idx ON player_source_listings (player_id);
+ALTER TABLE player_source_listings ENABLE ROW LEVEL SECURITY;
+
+-- Published rankings (Lindy's top 150 and top 100 freshmen, ESPN 100 recruiting class). player_id is the ESPN id as listed; it can point to a
+-- player outside the pool, so it has no foreign key. Rows without an id are kept for reference.
+CREATE TABLE IF NOT EXISTS player_rankings (
+  source TEXT NOT NULL,                          -- lindys, espn
+  list TEXT NOT NULL,                            -- top150, freshmen (lindys); top100 (espn)
+  season INTEGER NOT NULL,                       -- ESPN source season (2027 = 2026-27)
+  rank INTEGER NOT NULL,
+  player_id INTEGER,
+  name TEXT NOT NULL,
+  team TEXT,
+  imported_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (source, list, season, rank)
+);
+CREATE INDEX IF NOT EXISTS player_rankings_player_idx ON player_rankings (player_id);
+ALTER TABLE player_rankings ENABLE ROW LEVEL SECURITY;
 
 CREATE TABLE IF NOT EXISTS fantasy_teams (
   fantasy_team_id INTEGER PRIMARY KEY,
@@ -309,23 +417,42 @@ RETURNS TABLE (
   fga NUMERIC,
   tpm NUMERIC,
   tpa NUMERIC,
-  last5_ppg NUMERIC
+  three_pct NUMERIC,
+  ft_pct NUMERIC,
+  shots_per_game NUMERIC,
+  last5_ppg NUMERIC,
+  year TEXT,
+  stats_season INTEGER
 )
 LANGUAGE sql AS $$
-  WITH filtered AS (
-    SELECT *
-    FROM player_games
-    WHERE include_dnp OR minutes > 0
+  WITH eligible AS (
+    -- Exhibitions stay out of season averages; they are shown separately in game logs.
+    SELECT pg.*
+    FROM player_games pg
+    LEFT JOIN games g ON g.game_id = pg.game_id
+    WHERE (include_dnp OR pg.minutes > 0)
+      AND NOT COALESCE(g.is_exhibition, FALSE)
+  ),
+  latest AS (
+    SELECT player_id, MAX(season) AS season FROM eligible GROUP BY player_id
+  ),
+  filtered AS (
+    SELECT e.* FROM eligible e JOIN latest l USING (player_id)
+    WHERE e.season IS NOT DISTINCT FROM l.season
   ),
   stats AS (
     SELECT
       player_id,
+      MAX(season) AS stats_season,
       AVG(pts) AS ppg,
       AVG(minutes) AS mpg,
       AVG(fgm) AS fgm,
       AVG(fga) AS fga,
       AVG(tpm) AS tpm,
-      AVG(tpa) AS tpa
+      AVG(tpa) AS tpa,
+      SUM(tpm)::NUMERIC / NULLIF(SUM(tpa), 0) * 100 AS three_pct,
+      SUM(ftm)::NUMERIC / NULLIF(SUM(fta), 0) * 100 AS ft_pct,
+      AVG(fga) AS shots_per_game
     FROM filtered
     GROUP BY player_id
   ),
@@ -359,13 +486,26 @@ LANGUAGE sql AS $$
     s.fga,
     s.tpm,
     s.tpa,
-    l.last5_ppg
+    s.three_pct,
+    s.ft_pct,
+    s.shots_per_game,
+    l.last5_ppg,
+    p.experience,
+    s.stats_season
   FROM players p
   LEFT JOIN teams t ON t.team_id = p.team_id
   LEFT JOIN stats s ON s.player_id = p.player_id
   LEFT JOIN last5 l ON l.player_id = p.player_id
-  ORDER BY s.ppg DESC NULLS LAST
+  ORDER BY s.ppg DESC NULLS LAST, p.player_id
   LIMIT row_limit;
+$$;
+
+-- One JSON value per call, so PostgREST's max-rows cap does not force repeated aggregations when paging.
+CREATE OR REPLACE FUNCTION roster_snapshot_json(include_dnp BOOLEAN DEFAULT FALSE, row_limit INTEGER DEFAULT 50)
+RETURNS JSONB
+LANGUAGE sql AS $$
+  SELECT COALESCE(jsonb_agg(to_jsonb(r) ORDER BY r.ppg DESC NULLS LAST, r.player_id), '[]'::jsonb)
+  FROM roster_snapshot(include_dnp, row_limit) r;
 $$;
 
 CREATE OR REPLACE FUNCTION home_stats(include_dnp BOOLEAN DEFAULT FALSE)
@@ -654,11 +794,14 @@ LANGUAGE sql AS $$
       c.fantasy_team_id,
       c.is_starter,
       c.slot,
-      pg.pts
+      COALESCE(pg.pts, lpg.pts) AS pts
     FROM chosen c
     LEFT JOIN player_games pg
       ON pg.player_id = c.player_id
      AND pg.game_id = c.chosen_game_id
+    LEFT JOIN live_player_games lpg
+      ON lpg.player_id = c.player_id
+     AND lpg.game_id = c.chosen_game_id
   )
   SELECT
     season,
@@ -748,12 +891,15 @@ LANGUAGE sql AS $$
       c.player_id,
       g.game_datetime AS game_datetime,
       COALESCE(pg.game_date, g.game_date) AS game_date,
-      pg.pts::INTEGER AS points,
+      COALESCE(pg.pts, lpg.pts)::INTEGER AS points,
       g.status
     FROM chosen c
     LEFT JOIN player_games pg
       ON pg.player_id = c.player_id
      AND pg.game_id = c.chosen_game_id
+    LEFT JOIN live_player_games lpg
+      ON lpg.player_id = c.player_id
+     AND lpg.game_id = c.chosen_game_id
     LEFT JOIN games g ON g.game_id = c.chosen_game_id
   )
   SELECT
@@ -1076,6 +1222,8 @@ LANGUAGE sql AS $$
   WHERE p.player_id = player_id_param;
 $$;
 
+DROP FUNCTION IF EXISTS player_game_log(INTEGER, INTEGER);
+
 CREATE OR REPLACE FUNCTION player_game_log(player_id_param INTEGER, row_limit INTEGER DEFAULT 10)
 RETURNS TABLE (
   game_id INTEGER,
@@ -1085,6 +1233,7 @@ RETURNS TABLE (
   opponent_id INTEGER,
   opponent_name TEXT,
   home_away TEXT,
+  is_exhibition BOOLEAN,
   pts INTEGER,
   minutes NUMERIC,
   fgm INTEGER,
@@ -1106,6 +1255,7 @@ LANGUAGE sql AS $$
     CASE WHEN g.home_team_id = pg.team_id THEN g.away_team_id ELSE g.home_team_id END AS opponent_id,
     CASE WHEN g.home_team_id = pg.team_id THEN g.away_team_name ELSE g.home_team_name END AS opponent_name,
     CASE WHEN g.home_team_id = pg.team_id THEN 'Home' ELSE 'Away' END AS home_away,
+    COALESCE(g.is_exhibition, FALSE) AS is_exhibition,
     pg.pts,
     pg.minutes,
     pg.fgm,
@@ -1124,3 +1274,94 @@ LANGUAGE sql AS $$
   ORDER BY pg.game_date DESC NULLS LAST, pg.game_id DESC
   LIMIT row_limit;
 $$;
+
+-- Run in Supabase SQL Editor before enabling the Include exhibitions switch.
+CREATE OR REPLACE FUNCTION combined_player_stats(source_season INTEGER)
+RETURNS JSONB
+LANGUAGE sql
+STABLE
+AS $$
+  WITH eligible AS (
+    SELECT pg.*
+    FROM player_games pg
+    LEFT JOIN games g ON g.game_id = pg.game_id
+    WHERE pg.season = source_season
+      AND (pg.minutes > 0 OR (COALESCE(g.is_exhibition, FALSE) AND pg.minutes IS NULL))
+  ),
+  averages AS (
+    SELECT player_id, COUNT(*) AS games, AVG(pts) AS ppg, AVG(minutes) AS mpg,
+      AVG(fgm) AS fgm, AVG(fga) AS fga, AVG(tpm) AS tpm, AVG(tpa) AS tpa,
+      SUM(tpm)::NUMERIC / NULLIF(SUM(tpa), 0) * 100 AS three_pct,
+      SUM(ftm)::NUMERIC / NULLIF(SUM(fta), 0) * 100 AS ft_pct,
+      AVG(fga) AS shots_per_game
+    FROM eligible GROUP BY player_id
+  ),
+  recent AS (
+    SELECT player_id, AVG(pts) AS last5_ppg
+    FROM (
+      SELECT player_id, pts,
+        ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY game_date DESC NULLS LAST, game_id DESC) AS rn
+      FROM eligible
+    ) ranked
+    WHERE rn <= 5 GROUP BY player_id
+  )
+  SELECT COALESCE(jsonb_object_agg(a.player_id, to_jsonb(a) || jsonb_build_object(
+    'stats_season', source_season, 'last5_ppg', r.last5_ppg
+  )), '{}'::jsonb)
+  FROM averages a LEFT JOIN recent r USING (player_id);
+$$;
+
+REVOKE ALL ON FUNCTION combined_player_stats(INTEGER) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION combined_player_stats(INTEGER) TO service_role;
+
+-- Links from a pool player to his page on an outside site (Rotowire for now). Run once in the Supabase SQL editor,
+-- then load rows with python/rotowire_players.py --apply.
+CREATE TABLE IF NOT EXISTS player_links (
+  player_id INTEGER NOT NULL REFERENCES players(player_id),
+  site TEXT NOT NULL,                 -- rotowire
+  external_id TEXT NOT NULL,          -- the site's player id
+  url TEXT NOT NULL,
+  name TEXT,                          -- the player's name on that site
+  match TEXT,                         -- name, jersey_last, manual
+  team_id INTEGER,                    -- ESPN team the link was matched on
+  external_team_id TEXT,              -- the site's team id
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (player_id, site)
+);
+ALTER TABLE player_links ENABLE ROW LEVEL SECURITY;
+
+-- Dated team rating snapshots (KenPom); see db/team-ratings.sql and python/import_kenpom.py.
+CREATE TABLE IF NOT EXISTS team_ratings (
+  source TEXT NOT NULL,
+  season INTEGER NOT NULL,
+  rating_date DATE NOT NULL,
+  source_team TEXT NOT NULL,
+  team_id INTEGER REFERENCES teams(team_id),
+  rank INTEGER,
+  conference TEXT,
+  wins INTEGER,
+  losses INTEGER,
+  net_rtg NUMERIC,
+  ortg NUMERIC,
+  ortg_rank INTEGER,
+  drtg NUMERIC,
+  drtg_rank INTEGER,
+  adj_tempo NUMERIC,
+  adj_tempo_rank INTEGER,
+  luck NUMERIC,
+  luck_rank INTEGER,
+  sos_net NUMERIC,
+  sos_net_rank INTEGER,
+  sos_ortg NUMERIC,
+  sos_ortg_rank INTEGER,
+  sos_drtg NUMERIC,
+  sos_drtg_rank INTEGER,
+  ncsos_net NUMERIC,
+  ncsos_net_rank INTEGER,
+  imported_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (source, season, rating_date, source_team)
+);
+
+CREATE INDEX IF NOT EXISTS team_ratings_team_idx ON team_ratings (team_id, source, rating_date DESC);
+
+ALTER TABLE team_ratings ENABLE ROW LEVEL SECURITY;

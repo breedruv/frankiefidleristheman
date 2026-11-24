@@ -29,7 +29,14 @@
     "extract:player-shots": "node scripts/extract-shot-data.js",
     "populate:team-logos": "node scripts/populate-team-logos.js",
     "sync:player-shots": "node scripts/sync-player-shots.js",
-    "sync:all:postgres": "python python/espn_ingest.py all"
+    "sync:all:postgres": "python python/espn_ingest.py all",
+    "live:loop": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/live-stats-loop.mjs",
+    "live:loop:all": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/live-stats-loop.mjs --all-games",
+    "live:report": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/live-rate-report.mjs",
+    "collector": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/collector.mjs",
+    "collector:once": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/collector.mjs --once",
+    "collector:package": "node scripts/package-collector.mjs",
+    "supabase:live-scoring": "node scripts/apply-live-scoring.js"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

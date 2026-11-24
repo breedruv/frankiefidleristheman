@@ -20,6 +20,11 @@ CREATE TABLE IF NOT EXISTS player_stat_averages (
   PRIMARY KEY (player_id, season)
 );
 
+-- ESPN starter flag per box-score row, and games started per season. Null when a season's rows have no
+-- starter data (loaded before the column existed); python/import_prior_season.py fills it.
+ALTER TABLE player_games ADD COLUMN IF NOT EXISTS starter BOOLEAN;
+ALTER TABLE player_stat_averages ADD COLUMN IF NOT EXISTS games_started INTEGER;
+
 CREATE INDEX IF NOT EXISTS idx_player_stat_averages_season_ppg
   ON player_stat_averages (season, ppg DESC);
 
@@ -55,6 +60,7 @@ BEGIN
       player_id,
       season,
       COUNT(*)::INTEGER AS games_played,
+      CASE WHEN COUNT(starter) > 0 THEN (COUNT(*) FILTER (WHERE starter))::INTEGER END AS games_started,
       AVG(pts) AS ppg,
       AVG(minutes) AS mpg,
       CASE WHEN SUM(tpa) > 0 THEN SUM(tpm)::NUMERIC / SUM(tpa) * 100 END AS three_pt_percentage,
@@ -78,12 +84,12 @@ BEGIN
     GROUP BY player_id, season
   )
   INSERT INTO player_stat_averages (
-    player_id, season, games_played, ppg, mpg, three_pt_percentage,
+    player_id, season, games_played, games_started, ppg, mpg, three_pt_percentage,
     free_throw_percentage, shots_per_game, last5_games, last5_ppg, last5_mpg,
     last5_three_pt_percentage, last5_free_throw_percentage, last5_shots_per_game
   )
   SELECT
-    summary.player_id, summary.season, summary.games_played, summary.ppg, summary.mpg,
+    summary.player_id, summary.season, summary.games_played, summary.games_started, summary.ppg, summary.mpg,
     summary.three_pt_percentage, summary.free_throw_percentage, summary.shots_per_game,
     last_five.last5_games, last_five.last5_ppg, last_five.last5_mpg,
     last_five.last5_three_pt_percentage, last_five.last5_free_throw_percentage,

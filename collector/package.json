@@ -1,0 +1,13 @@
+{
+  "name": "ffi-collector",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "collector": "node scripts/collector.mjs",
+    "collector:once": "node scripts/collector.mjs --once"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.118.0",
+    "dotenv": "16.4.5"
+  }
+}

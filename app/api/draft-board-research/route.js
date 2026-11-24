@@ -6,6 +6,8 @@ import { supabase } from "../../../lib/supabase";
 import { getExhibitionStats } from "../../../lib/exhibitionStats";
 import { currentSeasonStats } from "../../../lib/exhibitionStats.mjs";
 import { getPoolPlayerIds } from "../../../lib/queries";
+import { withAvailability } from "../../../lib/availability";
+import { withSourceProfiles } from "../../../lib/sourceProfiles";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +29,7 @@ export async function GET() {
     ]);
     if (error) throw error;
     if (!Array.isArray(snapshot)) throw new Error("Invalid roster snapshot.");
-    const players = poolIds ? snapshot.filter((player) => poolIds.has(Number(player.player_id))) : snapshot;
+    const players = await withAvailability(await withSourceProfiles(poolIds ? snapshot.filter((player) => poolIds.has(Number(player.player_id))) : snapshot));
     const currentIds = new Set(players.map((player) => Number(player.player_id)));
     const history = new Map(Object.values(getDraftHistory("2025")?.draftSlots || {}).map((player) => [Number(player.playerId), player]));
     return Response.json({

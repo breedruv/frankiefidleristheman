@@ -9,7 +9,7 @@ const defaultTeams = ["MB", "AS", "SL", "DD", "Len", "Brandon", "John B", "BJ"];
 const rounds = ["Franchise Round", ...Array.from({ length: 17 }, (_, index) => `Round ${index + 1}`)];
 function PlayerCard({ player, supplemental = false, emptyLabel = "Open pick" }) {
   if (!player) return <div className="draft-player-card draft-player-card-empty"><div className="draft-player-avatar">+</div><div><strong>{emptyLabel}</strong><span>{supplemental ? "Any position" : "Player slot"}</span></div></div>;
-  const headshot = player.playerId ? `https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/${player.playerId}.png` : null;
+  const headshot = player.playerId > 0 ? `https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/${player.playerId}.png` : null;
   return <div className={`draft-player-card draft-player-card-filled position-${String(player.position || "").toLowerCase()}`}><div className="draft-player-avatar">{headshot ? <img src={headshot} alt="" /> : "?"}</div><div><strong>{player.name}</strong><span>{player.position} · {player.college}</span></div></div>;
 }
 

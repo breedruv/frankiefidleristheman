@@ -34,10 +34,17 @@ def load_env_local():
             os.environ.setdefault(key.strip(), value)
 
 
+def espn_season(day):
+    # ESPN labels a season by the year it ends: November 2026 and March 2027 are both season 2027.
+    if not day:
+        return None
+    return day.year + 1 if day.month >= 7 else day.year
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Sync ESPN CBB data into Postgres or Supabase REST.")
-    parser.add_argument("command", choices=["roster", "schedule", "stats", "all", "seed-fantasy"], help="Run type")
-    parser.add_argument("--season", type=int, default=datetime.now().year, help="Season year tag")
+    parser.add_argument("command", choices=["roster", "schedule", "stats", "shots", "all", "seed-fantasy"], help="Run type")
+    parser.add_argument("--season", type=int, default=espn_season(datetime.now()), help="ESPN season year (2027 = 2026-27)")
     parser.add_argument("--sleep", type=float, default=DEFAULT_SLEEP_SECONDS, help="Delay between requests")
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT, help="HTTP timeout in seconds")
     parser.add_argument("--since", type=str, default=None, help="Only sync games on/after YYYY-MM-DD")
@@ -696,7 +703,7 @@ def run_schedule(conn, season, sleep, timeout, include_nonfinal=False):
                     "game_id": game_id,
                     "game_date": game_date,
                     "game_datetime": game_datetime,
-                    "season": season or (game_date.year if game_date else None),
+                    "season": season or espn_season(game_date),
                     "home_team_id": str((home or {}).get("team", {}).get("id")) if home else None,
                     "home_team_name": (home or {}).get("team", {}).get("displayName"),
                     "away_team_id": str((away or {}).get("team", {}).get("id")) if away else None,
@@ -794,7 +801,7 @@ def extract_game_from_summary(summary, season, game_id):
         "game_id": str(game_id),
         "game_date": game_date,
         "game_datetime": game_datetime,
-        "season": season or (game_date.year if game_date else None),
+        "season": season or espn_season(game_date),
         "home_team_id": str((home or {}).get("team", {}).get("id")) if home else None,
         "home_team_name": (home or {}).get("team", {}).get("displayName"),
         "away_team_id": str((away or {}).get("team", {}).get("id")) if away else None,
@@ -860,7 +867,7 @@ def extract_stats_rows(summary, season, game_id):
                     "dreb": dreb,
                     "pf": parse_int(stat_map.get("PF")),
                     "minutes": parse_minutes(stat_map.get("MIN")),
-                    "season": season or (game_date.year if game_date else None),
+                    "season": season or espn_season(game_date),
                     "athlete": athlete,
                     "team_display": team.get("displayName"),
                 }
@@ -868,6 +875,75 @@ def extract_stats_rows(summary, season, game_id):
                 rows.append(row)
 
     return rows
+
+
+def extract_shot_rows(summary, game_id, season=None, player_ids=None):
+    """Field-goal attempts with court coordinates from a summary's plays (shot maps). Free throws are skipped.
+
+    player_ids limits rows to those shooters (ints); None keeps every shooter. play_id stays a string because
+    ESPN play ids exceed JavaScript's safe integer range.
+    """
+    game_date = extract_game_date(summary)
+    season = season or espn_season(game_date)
+    rows = {}
+    for play in summary.get("plays") or []:
+        coordinate = play.get("coordinate") or {}
+        participants = play.get("participants") or []
+        shooter = ((participants[0] if participants else {}).get("athlete") or {}).get("id")
+        if not play.get("shootingPlay") or "freethrow" in ((play.get("type") or {}).get("text") or "").lower():
+            continue
+        if not shooter or coordinate.get("x") is None or coordinate.get("y") is None:
+            continue
+        if abs(float(coordinate["x"])) > 100 or abs(float(coordinate["y"])) > 100:
+            continue
+        if player_ids is not None and int(shooter) not in player_ids:
+            continue
+        assist = ((participants[1] if len(participants) > 1 else {}).get("athlete") or {}).get("id")
+        rows[str(play["id"])] = {
+            "play_id": str(play["id"]), "game_id": int(game_id), "player_id": int(shooter),
+            "assist_player_id": int(assist) if assist else None,
+            "team_id": int(play["team"]["id"]) if (play.get("team") or {}).get("id") else None,
+            "period": (play.get("period") or {}).get("number"), "clock": (play.get("clock") or {}).get("displayValue"),
+            "shot_type": (play.get("type") or {}).get("text"), "result": "Made" if play.get("scoringPlay") else "Missed",
+            "points_attempted": play.get("pointsAttempted"), "coord_x": coordinate["x"], "coord_y": coordinate["y"],
+            "shot_text": play.get("text"), "game_date": game_date.isoformat() if game_date else None, "season": season,
+        }
+    return list(rows.values())
+
+
+def upsert_shots_supabase(client, rows):
+    for start in range(0, len(rows), 500):
+        client.upsert("player_shots", rows[start:start + 500], "play_id")
+
+
+def run_shots_supabase(client, season, sleep, timeout, since_date=None):
+    """Shot maps for final games that have box scores but no shots yet (live scoring finalizes most games
+    without fetching plays). Run by the collector after the 4am stats backstop."""
+    game_ids = get_games_supabase(client, since_date, None, season)
+    stats_ids, shot_ids = set(), set()
+    # Reads return one row per box-score line or shot, capped at 1,000: 25 games stay under it for player_games,
+    # but a game has ~150 shots, so shots are checked 5 games at a time.
+    for start in range(0, len(game_ids), 25):
+        chunk = [str(game_id) for game_id in game_ids[start:start + 25]]
+        stats_ids.update(str(r["game_id"]) for r in client.select_in("player_games", "game_id", chunk, "game_id"))
+    for start in range(0, len(game_ids), 5):
+        chunk = [str(game_id) for game_id in game_ids[start:start + 5]]
+        shot_ids.update(str(r["game_id"]) for r in client.select_in("player_shots", "game_id", chunk, "game_id"))
+    missing = [game_id for game_id in game_ids if str(game_id) in stats_ids and str(game_id) not in shot_ids]
+    print(f"{len(missing)} final games without shots ({len(shot_ids)} already have shots).")
+    written, errors = 0, []
+    for game_id in missing:
+        try:
+            summary = fetch_json(f"{ESPN_BASE}/summary?event={game_id}", timeout)
+            rows = extract_shot_rows(summary, game_id, season)
+            upsert_shots_supabase(client, rows)
+            written += len(rows)
+        except requests.RequestException as error:
+            errors.append(f"{game_id}: {error}")
+            print(f"Failed game {game_id}: {error}")
+        time.sleep(sleep)
+    print(f"Shots synced: {written} from {len(missing) - len(errors)} games.")
+    client.update_sync_log("shots", json.dumps({"games": len(missing) - len(errors), "shots": written, "errors": errors[:20]}))
 
 
 def run_stats(conn, season, sleep, timeout, since_date=None, up_to_date=None, force=False):
@@ -1061,7 +1137,7 @@ def run_schedule_supabase(client, season, sleep, timeout, include_nonfinal=False
                 "game_id": game_id,
                 "game_date": game_date.isoformat() if game_date else None,
                 "game_datetime": game_datetime.isoformat() if game_datetime else None,
-                "season": season or (game_date.year if game_date else None),
+                "season": season or espn_season(game_date),
                 "home_team_id": str((home or {}).get("team", {}).get("id")) if home else None,
                 "home_team_name": (home or {}).get("team", {}).get("displayName"),
                 "away_team_id": str((away or {}).get("team", {}).get("id")) if away else None,
@@ -1094,11 +1170,16 @@ def get_last_run_supabase(client, run_type):
         return None
 
 
-def get_games_supabase(client, since_date=None, up_to_date=None):
+def get_games_supabase(client, since_date=None, up_to_date=None, season=None):
+    # Regular-season games that have tipped; exhibitions have their own pipeline.
     params = {
         "select": "game_id,game_date",
         "order": "game_date.asc",
+        "is_exhibition": "eq.false",
+        "game_datetime": f"lt.{datetime.now(timezone.utc).isoformat()}",
     }
+    if season:
+        params["season"] = f"eq.{season}"
     if since_date and up_to_date:
         params["and"] = f"(game_date.gte.{since_date},game_date.lte.{up_to_date})"
     elif since_date:
@@ -1124,21 +1205,41 @@ def run_stats_supabase(client, season, sleep, timeout, since_date=None, up_to_da
         except ValueError:
             print("Invalid --up-to date. Use YYYY-MM-DD.")
     since_value = last_run.date().isoformat() if last_run else None
-    game_ids = get_games_supabase(client, since_value, today)
+    game_ids = get_games_supabase(client, since_value, today, season)
     if not game_ids and last_run:
         print("No games since last run. Retrying full schedule up to today.")
-        game_ids = get_games_supabase(client, None, today)
+        game_ids = get_games_supabase(client, None, today, season)
     if not game_ids:
         print("No games found in schedule up to today. Run schedule sync first.")
         client.update_sync_log("stats", json.dumps({"games": 0, "note": "no games up to today"}))
         return
+    if not force:
+        # Small chunks keep each player_games read under the 1,000-row REST limit.
+        stored_ids = set()
+        for start in range(0, len(game_ids), 25):
+            chunk = [str(game_id) for game_id in game_ids[start:start + 25]]
+            stored_ids.update(str(row.get("game_id")) for row in client.select_in("player_games", "game_id", chunk, "game_id"))
+        game_ids = [game_id for game_id in game_ids if str(game_id) not in stored_ids]
+        print(f"{len(game_ids)} tipped games without stats ({len(stored_ids)} already stored; --force re-imports).")
     processed = 0
+    errors = []
 
     for game_id in game_ids:
         url = f"{ESPN_BASE}/summary?event={game_id}"
-        summary = fetch_json(url, timeout)
+        try:
+            summary = fetch_json(url, timeout)
+        except requests.RequestException as error:
+            errors.append(f"{game_id}: {error}")
+            print(f"Failed game {game_id}: {error}")
+            time.sleep(sleep)
+            continue
 
         game = extract_game_from_summary(summary, season, game_id)
+        # In-progress box scores belong in live_player_games, never in season stats.
+        if "final" not in (game.get("status") or "").lower():
+            print(f"Skipped game {game_id} (not final: {game.get('status')}).")
+            time.sleep(sleep)
+            continue
         if game and game.get("game_id"):
             game_payload = dict(game)
             if isinstance(game_payload.get("game_date"), date):
@@ -1182,13 +1283,17 @@ def run_stats_supabase(client, season, sleep, timeout, since_date=None, up_to_da
 
         if payload:
             client.upsert("player_games", payload, "game_id,player_id")
+            upsert_shots_supabase(client, extract_shot_rows(summary, game_id, season))
             processed += 1
             print(f"Stats synced for game {game_id} ({len(payload)} player rows).")
         else:
             print(f"Skipped game {game_id} (no rostered players found).")
         time.sleep(sleep)
 
-    client.update_sync_log("stats", json.dumps({"games": processed}))
+    if processed:
+        client.request("POST", "/rest/v1/rpc/refresh_player_stat_averages", json_body={"season_param": season})
+        print(f"Refreshed season {season} averages.")
+    client.update_sync_log("stats", json.dumps({"games": processed, "errors": errors[:20]}))
 
 
 def seed_fantasy_supabase(client, season, draft_order):
@@ -1251,8 +1356,12 @@ def main():
                 up_to_date=args.up_to,
                 force=args.force,
             )
+        if args.command == "shots":
+            run_shots_supabase(client, args.season, args.sleep, args.timeout, since_date=args.since)
         return
 
+    if args.command == "shots":
+        raise SystemExit("The shots command writes through Supabase REST; run it with --use-supabase.")
     conn = db_connect()
     try:
         if args.apply_schema:

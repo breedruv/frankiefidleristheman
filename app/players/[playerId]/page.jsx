@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
-import { getPlayerGameLog, getPlayerProfile, getPlayerSummaries } from "../../../lib/queries";
-
-const TEAM_ID = 2;
+import { getPlayerGameLog, getPlayerProfile, getPlayerStatAverages, getPlayerSummaries } from "../../../lib/queries";
+import { DRAFT_SEASON } from "../../../lib/draftRules.mjs";
 
 const formatNumber = (value, digits = 1) => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
@@ -13,14 +12,19 @@ const formatNumber = (value, digits = 1) => {
 export default async function PlayerPage({ params }) {
   const { playerId } = await params;
   const numericPlayerId = Number(playerId);
-  const player = await getPlayerProfile(numericPlayerId, TEAM_ID);
+  const player = await getPlayerProfile(numericPlayerId);
   if (!player) {
     notFound();
   }
 
-  const summaries = await getPlayerSummaries([numericPlayerId]);
+  const [summaries, currentSeasonStats, allGameLog] = await Promise.all([
+    getPlayerSummaries([numericPlayerId]),
+    getPlayerStatAverages(DRAFT_SEASON + 1, [numericPlayerId]),
+    getPlayerGameLog(player.player_id, 12, DRAFT_SEASON + 1)
+  ]);
   const summary = summaries?.[0] || {};
-  const gameLog = await getPlayerGameLog(player.player_id, 12);
+  const seasonSummary = currentSeasonStats?.[0] || summary;
+  const gameLog = allGameLog.filter((game) => !game.is_exhibition);
   const fullName = `${player.first_name ?? ""} ${player.last_name ?? ""}`.trim();
   const bioLine = [
     player.team_name,
@@ -73,14 +77,14 @@ export default async function PlayerPage({ params }) {
             </div>
           </div>
           <div className="card">
-            <h3>Season Averages</h3>
+            <h3>2026–27 Season Averages</h3>
             <p className="section-subtitle">Games with MIN &gt; 0</p>
             <div style={{ display: "grid", gap: "0.5rem", marginTop: "1rem" }}>
-              <div><strong>PPG:</strong> {formatNumber(summary.ppg)}</div>
-              <div><strong>MPG:</strong> {formatNumber(summary.mpg)}</div>
-              <div><strong>FGM/FGA:</strong> {formatNumber(summary.fgm)} / {formatNumber(summary.fga)}</div>
-              <div><strong>3PM/3PA:</strong> {formatNumber(summary.tpm)} / {formatNumber(summary.tpa)}</div>
-              <div><strong>Last 5 PPG:</strong> {formatNumber(summary.last5_ppg)}</div>
+              <div><strong>PPG:</strong> {formatNumber(seasonSummary.ppg)}</div>
+              <div><strong>MPG:</strong> {formatNumber(seasonSummary.mpg)}</div>
+              <div><strong>GP:</strong> {seasonSummary.games_played ?? "--"}</div>
+              <div><strong>3PT%:</strong> {formatNumber(seasonSummary.three_pt_percentage)}%</div>
+              <div><strong>Last 5 PPG:</strong> {formatNumber(seasonSummary.last5_ppg)}</div>
             </div>
           </div>
         </div>
@@ -89,7 +93,7 @@ export default async function PlayerPage({ params }) {
       <section className="section">
         <div className="section-title">
           <h2>Game Log</h2>
-          <span className="section-subtitle">Recent performances</span>
+          <span className="section-subtitle">2026–27 regular-season performances</span>
         </div>
         <table className="table">
           <thead>
@@ -117,7 +121,7 @@ export default async function PlayerPage({ params }) {
               gameLog.map((game) => (
                 <tr key={game.game_id}>
                   <td>{game.game_date ?? "--"}</td>
-                  <td>{game.opponent_name ?? "--"}</td>
+                  <td>{game.opponent_name ?? "--"}{game.is_exhibition ? " (Exhibition)" : ""}</td>
                   <td>{game.home_away ?? "--"}</td>
                   <td>{game.pts ?? 0}</td>
                   <td>{formatNumber(game.minutes)}</td>

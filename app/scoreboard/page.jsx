@@ -6,7 +6,9 @@ import {
   getFantasyLineupDetails
 } from "../../lib/queries";
 import AutoSubmitSelect from "../components/AutoSubmitSelect";
-import StatusLabel from "../components/StatusLabel";
+import LiveRefresh from "../components/LiveRefresh";
+import { sampleScoreboard } from "../../lib/sampleScoreboard.mjs";
+import { formatFocusedGame } from "../../lib/scoreboardFocus.mjs";
 
 export const dynamic = "force-dynamic";
 
@@ -25,22 +27,20 @@ const formatShortDate = (value) => {
 };
 
 const formatPlayerName = (row) => {
-  const first = row?.first_name?.trim() || "";
   const last = row?.last_name?.trim() || "";
-  if (first && last) {
-    return `${first.charAt(0)}. ${last}`;
-  }
-  return first || last || "--";
+  return last || row?.first_name?.trim() || "--";
 };
 
 export default async function ScoreboardPage({ searchParams }) {
   const resolvedSearchParams = await searchParams;
-  const season = Number(resolvedSearchParams?.season) || new Date().getFullYear();
+  const isSample = process.env.NODE_ENV !== "production" && resolvedSearchParams?.sample === "scoreboard";
+  const sample = isSample ? sampleScoreboard() : null;
+  const season = Number(resolvedSearchParams?.season) || (isSample ? 2026 : new Date().getFullYear());
   const seasonType =
     typeof resolvedSearchParams?.season_type === "string"
       ? resolvedSearchParams.season_type
       : "regular";
-  const rawWeekOptions = await getFantasyWeekOptions(season, seasonType);
+  const rawWeekOptions = isSample ? [sample.week] : await getFantasyWeekOptions(season, seasonType);
   const weekOptions = rawWeekOptions.map((week) => ({
     ...week,
     week: Number(week.week)
@@ -55,12 +55,12 @@ export default async function ScoreboardPage({ searchParams }) {
     label: `${week.label} (${formatDate(week.start_date)} -> ${formatDate(week.end_date)})`
   }));
 
-  const matchups = await getFantasyMatchups(season, seasonType);
-  const fantasyTeams = await getFantasyTeams();
+  const matchups = isSample ? sample.matchups : await getFantasyMatchups(season, seasonType);
+  const fantasyTeams = isSample ? sample.teams : await getFantasyTeams();
   const teamNameById = new Map(
-    fantasyTeams.map((team) => [team.fantasy_team_id, team.name || team.short_code])
+    fantasyTeams.map((team) => [team.fantasy_team_id, team.short_code || team.name])
   );
-  const lineupScores = selectedWeekNumber
+  const lineupScores = isSample ? sample.lineupScores : selectedWeekNumber
     ? await getFantasyLineupScores({ season, seasonType, week: selectedWeekNumber })
     : [];
   const scoresByTeam = new Map(
@@ -103,30 +103,21 @@ export default async function ScoreboardPage({ searchParams }) {
     gameIndex: index + 1
   }));
 
-  const gameOptions = matchupCardsOrdered.map((matchup) => {
-    const teamAName =
-      teamNameById.get(matchup.teamADisplay) ?? `Team ${matchup.teamADisplay}`;
-    const teamBName =
-      teamNameById.get(matchup.teamBDisplay) ?? `Team ${matchup.teamBDisplay}`;
-    return {
-      value: String(matchup.gameIndex),
-      label: `Game ${matchup.gameIndex}: ${teamAName} vs ${teamBName}`
-    };
-  });
-
   const selectedGameIndex =
     selectedGameParam !== "overall" ? Number(selectedGameParam) - 1 : null;
   const selectedMatchups =
     Number.isInteger(selectedGameIndex) && selectedGameIndex >= 0
       ? matchupCardsOrdered.slice(selectedGameIndex, selectedGameIndex + 1)
       : matchupCardsOrdered;
+  const focusedMatchup = selectedGameParam === "overall" ? null : selectedMatchups[0] || null;
+  const otherMatchups = focusedMatchup ? matchupCardsOrdered.filter((matchup) => matchup.key !== focusedMatchup.key) : [];
 
   const teamIds = Array.from(
     new Set(
       weekMatchups.flatMap((row) => [row.fantasy_team_id, row.opponent_fantasy_team_id])
     )
   );
-  const lineupDetailsEntries = await Promise.all(
+  const lineupDetailsEntries = isSample ? Array.from(sample.lineupDetails.entries()).map(([teamId, details]) => ({ teamId, details })) : await Promise.all(
     teamIds.map(async (teamId) => ({
       teamId,
       details: await getFantasyLineupDetails({
@@ -146,98 +137,70 @@ export default async function ScoreboardPage({ searchParams }) {
   );
 
   const slotOrder = ["C", "F1", "F2", "G1", "G2", "T1", "T2"];
-  const slotLabel = (slot) => {
-    if (slot.startsWith("F")) return "F";
-    if (slot.startsWith("G")) return "G";
-    return slot;
+  const gameField = (row) => {
+    if (!row) return { label: "—", state: "empty" };
+    const status = (row.status || "").toLowerCase();
+    if (status.includes("final")) return { label: `Final ${row.points ?? "—"}`, state: "final" };
+    if (status.includes("progress") || status.includes("live")) return { label: `Live ${row.points ?? "—"}`, state: "live" };
+    if (!row.game_datetime) return { label: row.game_date ? formatShortDate(row.game_date) : "Upcoming", state: "upcoming" };
+    const time = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" })
+      .format(new Date(row.game_datetime))
+      .replace(":00", "")
+      .replace(" ", "");
+    return { label: `${formatShortDate(row.game_date)} ${time}`, state: "upcoming" };
   };
-  const formatNumber = (value, digits = 1) => {
-    if (value === null || value === undefined || Number.isNaN(Number(value))) {
-      return "--";
-    }
-    return Number(value).toFixed(digits);
-  };
-  const renderTeamBlock = (teamId, opponentId) => {
+  const renderTeamBlock = (teamId) => {
     const details = lineupDetailsByTeam.get(teamId) || [];
     const detailMap = new Map(details.map((row) => [row.slot, row]));
-    const totals = scoresByTeamFull.get(teamId);
-    const starterTotal = totals?.starter_points ?? 0;
-    const teamTotal = starterTotal;
-    const opponentTotal = scoresByTeamFull.get(opponentId)?.starter_points ?? 0;
-    const margin = starterTotal - opponentTotal;
-    const averageStarters = starterTotal ? starterTotal / 5 : 0;
-    const averageMargin = margin / 5;
+    const starterTotal = scoresByTeamFull.get(teamId)?.starter_points ?? 0;
+    const starterAverage = starterTotal / 5;
 
-    return (
-      <div className="lineup-block">
-        <div className="lineup-header">
-          <h3 style={{textAlign: "center"}}>{teamNameById.get(teamId) ?? `Team ${teamId}`}</h3>
+    return <div className="lineup-block">
+      <div className="lineup-header"><h3>{teamNameById.get(teamId) ?? `Team ${teamId}`}</h3></div>
+      <table className="table lineup-table">
+        <thead><tr><th>Pos</th><th>Player</th><th>Game</th></tr></thead>
+        <tbody>{slotOrder.flatMap((slot, index) => {
+          const row = detailMap.get(slot);
+          const game = gameField(row);
+          const rows = [];
+          if (index === 5) {
+            rows.push(<tr className="lineup-summary" key={`${teamId}-total`}><td colSpan="2">Starter total</td><td className="lineup-total-score">{starterTotal}</td></tr>);
+            rows.push(<tr className="lineup-average" key={`${teamId}-average`}><td colSpan="2">Starter avg.</td><td>{starterAverage.toFixed(1)}</td></tr>);
+          }
+          rows.push(<tr key={`${teamId}-${slot}`}><td>{slot}</td><td><strong>{formatPlayerName(row)}</strong><small>{row?.team_abbr ?? "—"}</small></td><td><span className={`scoreboard-game-state ${game.state}`}>{game.label}</span></td></tr>);
+          return rows;
+        })}</tbody>
+      </table>
+    </div>;
+  };
 
-        </div>
-        <table className="table lineup-table">
-          <thead>
-            <tr>
-              <th>Pos</th>
-              <th>Player</th>
-              <th>Team</th>
-              <th>Date</th>
-              <th>Points</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {slotOrder.slice(0, 5).map((slot) => {
-              const row = detailMap.get(slot);
-              const name = row ? formatPlayerName(row) : "--";
-              return (
-                <tr key={`${teamId}-${slot}`}>
-                  <td>{slotLabel(slot)}</td>
-                  <td>{name || "--"}</td>
-                  <td>{row?.team_abbr ?? "--"}</td>
-                  <td>{row?.game_date ? formatShortDate(row.game_date) : "--"}</td>
-                  <td>{row?.points ?? "--"}</td>
-                  <td>
-                    <StatusLabel status={row?.status} gameDatetime={row?.game_datetime} />
-                  </td>
-                </tr>
-              );
-            })}
-            <tr className="lineup-summary">
-              <td>Total</td>
-              <td>{`Margin`}</td>
-              <td>{`${formatNumber(margin, 0)}`}</td>
-              <td></td>
-              <td><strong>{teamTotal}</strong></td>
-              <td></td>
-            </tr>
-            <tr className="lineup-summary">
-              <td>Avg.</td>
-              <td>{`Avg Margin`} </td>
-              <td>{`${formatNumber(averageMargin, 1)}`}</td>
-              <td></td>
-              <td>{`${formatNumber(teamTotal / 5, 1)}`}</td>
-              <td></td>
-            </tr>
-            {slotOrder.slice(5).map((slot) => {
-              const row = detailMap.get(slot);
-              const name = row ? formatPlayerName(row) : "--";
-              return (
-                <tr key={`${teamId}-${slot}`}>
-                  <td>{slot}</td>
-                  <td>{name || "--"}</td>
-                  <td>{row?.team_abbr ?? "--"}</td>
-                  <td>{row?.game_date ? formatShortDate(row.game_date) : "--"}</td>
-                  <td>{row?.points ?? "--"}</td>
-                  <td>
-                    <StatusLabel status={row?.status} gameDatetime={row?.game_datetime} />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    );
+  const renderFocusedMatchup = (matchup) => {
+    const teamA = matchup.teamADisplay;
+    const teamB = matchup.teamBDisplay;
+    const detailsA = new Map((lineupDetailsByTeam.get(teamA) || []).map((row) => [row.slot, row]));
+    const detailsB = new Map((lineupDetailsByTeam.get(teamB) || []).map((row) => [row.slot, row]));
+    const totalA = scoresByTeamFull.get(teamA)?.starter_points ?? 0;
+    const totalB = scoresByTeamFull.get(teamB)?.starter_points ?? 0;
+    const focusedPlayer = (row) => {
+      const game = formatFocusedGame(row);
+      const initials = formatPlayerName(row).slice(0, 1);
+      return <div className="scoreboard-focused-player">
+        {row?.headshot ? <img src={row.headshot} alt="" /> : <span className="scoreboard-player-avatar" aria-hidden="true">{initials}</span>}
+        <div><strong>{formatPlayerName(row)}</strong><small>{row?.team_abbr ?? "—"}{row?.opponent_abbr ? ` vs ${row.opponent_abbr}` : ""}</small><small className={`scoreboard-focus-game ${game.state}`}>{game.game}</small></div>
+        <b>{game.points}</b>
+      </div>;
+    };
+    const lineupRow = (slot) => {
+      const a = detailsA.get(slot);
+      const b = detailsB.get(slot);
+      return <tr className={slot === "T1" ? "scoreboard-tiebreaker" : ""} key={slot}><th>{slot}</th><td>{focusedPlayer(a)}</td><td>{focusedPlayer(b)}</td></tr>;
+    };
+    return <section className="scoreboard-focus"><div className="scoreboard-focus-heading"><div><span>{isSample ? "Scoreboard sample · local only" : "Focused matchup"}</span><h2>{teamNameById.get(teamA)} <em>vs</em> {teamNameById.get(teamB)}</h2></div><form method="get"><input type="hidden" name="season" value={season} /><input type="hidden" name="season_type" value={seasonType} /><input type="hidden" name="week" value={selectedWeekNumber ?? ""} />{isSample && <input type="hidden" name="sample" value="scoreboard" />}<button className="ghost-pill" type="submit">Back to grid</button></form></div><div className="table-scroll"><table className="table scoreboard-focus-table"><thead><tr><th>Slot</th><th>{teamNameById.get(teamA)}</th><th>{teamNameById.get(teamB)}</th></tr></thead><tbody>{slotOrder.slice(0, 5).map(lineupRow)}<tr className="scoreboard-starter-total"><th>Total</th><td><strong>{totalA}</strong><small>{(totalA / 5).toFixed(1)} starter avg.</small></td><td><strong>{totalB}</strong><small>{(totalB / 5).toFixed(1)} starter avg.</small></td></tr>{slotOrder.slice(5).map(lineupRow)}</tbody></table></div></section>;
+  };
+  const scoreboardHref = (gameIndex) => {
+    const query = new URLSearchParams({ season: String(season), season_type: seasonType, week: String(selectedWeekNumber ?? ""), game: String(gameIndex) });
+    if (isSample) query.set("sample", "scoreboard");
+    return `/scoreboard?${query}`;
   };
 
   return (
@@ -245,13 +208,15 @@ export default async function ScoreboardPage({ searchParams }) {
       <section className="section">
         <div className="section-title">
           <h2>Scoreboard</h2>
+          <LiveRefresh />
           <div className="header-selects">
             <AutoSubmitSelect
               label="Phase"
               name="season_type"
               options={[
                 { value: "regular", label: "Regular" },
-                { value: "preseason", label: "Preseason" }
+                { value: "christmas", label: "Christmas Tournament" },
+                { value: "playoffs", label: "Playoffs" }
               ]}
               defaultValue={seasonType}
               hiddenInputs={{
@@ -283,93 +248,17 @@ export default async function ScoreboardPage({ searchParams }) {
             {`${formatDate(selectedWeek.start_date)} -> ${formatDate(selectedWeek.end_date)}`}
           </p>
         ) : null}
-        {gameOptions.length > 0 ? (
-          <div className="score-grid-header">
-            <AutoSubmitSelect
-              label="View"
-              name="game"
-              options={[
-                { value: "overall", label: "Overall" },
-                ...gameOptions
-              ]}
-              defaultValue={selectedGameParam}
-              hiddenInputs={{
-                season: season,
-                season_type: seasonType,
-                week: selectedWeekNumber ?? ""
-              }}
-              className="week-picker game-picker"
-            />
-          </div>
-        ) : null}
-        {selectedGameParam !== "overall" ? (
-            <form className="game-picker" method="get">
-              <input type="hidden" name="season" value={season} />
-              <input type="hidden" name="week" value={selectedWeekNumber ?? ""} />
-              <input type="hidden" name="game" value="overall" />
-              <button className="solid-pill" type="submit">Back to Overall</button>
-            </form>
-        ) : null}
-        <div className={`score-grid${selectedGameParam !== "overall" ? " score-grid-single" : ""}`}>
-          {selectedMatchups.length === 0 ? (
+        {focusedMatchup ? <><div className="scoreboard-other-games" aria-label="Other league matchups">{otherMatchups.map((matchup) => <form key={matchup.key} method="get"><input type="hidden" name="season" value={season} /><input type="hidden" name="season_type" value={seasonType} /><input type="hidden" name="week" value={selectedWeekNumber ?? ""} /><input type="hidden" name="game" value={matchup.gameIndex} />{isSample && <input type="hidden" name="sample" value="scoreboard" />}<button type="submit"><span>{teamNameById.get(matchup.teamADisplay)} <b>{matchup.teamAScore ?? "—"}</b></span><em>vs</em><span>{teamNameById.get(matchup.teamBDisplay)} <b>{matchup.teamBScore ?? "—"}</b></span></button></form>)}</div>{renderFocusedMatchup(focusedMatchup)}</> : <div className="score-grid">
+          {matchupCardsOrdered.length === 0 ? (
             <div className="card">
               <p className="section-subtitle">No matchups found for this week.</p>
             </div>
           ) : (
-            selectedMatchups.map((matchup) => (
-              <div className="card matchup-card" key={matchup.key}>
-                {selectedGameParam === "overall" ? (
-                  <div className="matchup-card-actions">
-                    <form method="get">
-                      <input type="hidden" name="season" value={season} />
-                      <input type="hidden" name="week" value={selectedWeekNumber ?? ""} />
-                      <input type="hidden" name="game" value={matchup.gameIndex} />
-                      <button className="solid-pill" type="submit">
-                        View Additional Details
-                      </button>
-                    </form>
-                  </div>
-                ) : null}
-                {renderTeamBlock(matchup.teamADisplay, matchup.teamBDisplay)}
-                <div className="lineup-divider" />
-                {renderTeamBlock(matchup.teamBDisplay, matchup.teamADisplay)}
-              </div>
-            ))
+            matchupCardsOrdered.map((matchup) => <a className="matchup-card scoreboard-grid-card" key={matchup.key} href={scoreboardHref(matchup.gameIndex)} aria-label={`Open ${teamNameById.get(matchup.teamADisplay)} versus ${teamNameById.get(matchup.teamBDisplay)}`}>{renderTeamBlock(matchup.teamADisplay)}<span className="matchup-vs">vs</span>{renderTeamBlock(matchup.teamBDisplay)}</a>)
           )}
-        </div>
+        </div>}
       </section>
 
-      <section className="section split">
-        <div className="card">
-          <div className="section-title">
-            <h2>Matchup Notes</h2>
-            <span className="section-subtitle">Weekly focus</span>
-          </div>
-          <ul style={{ margin: 0, paddingLeft: "1.2rem" }}>
-            <li>Starter totals exclude DNP games (`MIN = 0`).</li>
-            <li>Bench points apply to tiebreaker 1.</li>
-            <li>Next highest after top 6 applies to tiebreaker 2.</li>
-          </ul>
-        </div>
-        <div className="card">
-          <div className="section-title">
-            <h2>Upcoming Schedule</h2>
-            <span className="section-subtitle">Next set of featured games</span>
-          </div>
-          <div className="section">
-            <div>
-              <span className="tag">Featured</span>
-              <h3>Andrew vs Sam</h3>
-              <p className="section-subtitle">Tip: Saturday 3:00 PM</p>
-            </div>
-            <div>
-              <span className="tag">Rivalry</span>
-              <h3>North Squad vs South Squad</h3>
-              <p className="section-subtitle">Tip: Saturday 5:00 PM</p>
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
